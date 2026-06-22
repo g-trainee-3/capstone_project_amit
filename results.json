@@ -1,0 +1,1816 @@
+{
+  "evalId": "eval-6yv-2026-06-22T04:28:02",
+  "results": {
+    "version": 3,
+    "timestamp": "2026-06-22T04:28:02.061Z",
+    "prompts": [
+      {
+        "raw": "\"\"\"\nHigh School Management System API\n\nA super simple FastAPI application that allows students to view and sign up\nfor extracurricular activities at Mergington High School.\n\"\"\"\n\nfrom fastapi import FastAPI, HTTPException, Request\nfrom fastapi.staticfiles import StaticFiles\nfrom fastapi.responses import JSONResponse, RedirectResponse\nimport os\nimport sys\nfrom pathlib import Path\n\nROOT_DIR = Path(__file__).resolve().parents[1]\nif str(ROOT_DIR) not in sys.path:\n    sys.path.insert(0, str(ROOT_DIR))\n\nfrom src.extensions.kb_extension import rag_search\nfrom src.sql.text2sql import run_text2sql\n\napp = FastAPI(title=\"Mergington High School API\",\n              description=\"API for viewing and signing up for extracurricular activities\")\n\n# Mount the static files directory\ncurrent_dir = Path(__file__).parent\napp.mount(\"/static\", StaticFiles(directory=os.path.join(Path(__file__).parent,\n          \"static\")), name=\"static\")\n\n# In-memory activity database\nactivities = {\n    \"Chess Club\": {\n        \"description\": \"Learn strategies and compete in chess tournaments\",\n        \"schedule\": \"Fridays, 3:30 PM - 5:00 PM\",\n        \"max_participants\": 12,\n        \"participants\": [\"michael@mergington.edu\", \"daniel@mergington.edu\"]\n    },\n    \"Programming Class\": {\n        \"description\": \"Learn programming fundamentals and build software projects\",\n        \"schedule\": \"Tuesdays and Thursdays, 3:30 PM - 4:30 PM\",\n        \"max_participants\": 20,\n        \"participants\": [\"emma@mergington.edu\", \"sophia@mergington.edu\"]\n    },\n    \"Gym Class\": {\n        \"description\": \"Physical education and sports activities\",\n        \"schedule\": \"Mondays, Wednesdays, Fridays, 2:00 PM - 3:00 PM\",\n        \"max_participants\": 30,\n        \"participants\": [\"john@mergington.edu\", \"olivia@mergington.edu\"]\n    }\n}\n\n\n@app.get(\"/\")\ndef root():\n    return RedirectResponse(url=\"/static/index.html\")\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.get(\"/activities\")\ndef get_activities():\n    return activities\n\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.post(\"/activities/{activity_name}/signup\")\ndef signup_for_activity(activity_name: str, email: str):\n    \"\"\"Sign up a student for an activity\"\"\"\n    if activity_name not in activities:\n        raise HTTPException(status_code=404, detail=\"Activity not found\")\n\n    # Get the specific activity\n    activity = activities[activity_name]\n\n    # Add student\n    activity[\"participants\"].append(email)\n    return {\"message\": f\"Signed up {email} for {activity_name}\"}\n\n\ndef jsonify(content: dict, status_code: int = 200):\n    \"\"\"Return a JSON response with the given content and status.\"\"\"\n    return JSONResponse(content=content, status_code=status_code)\n\n\ndef classify_query(question: str) -> str:\n    \"\"\"Classify a question as 'rag', 'text2sql', or 'unknown' using keyword matching.\"\"\"\n    normalized = question.strip().lower()\n    quantitative_keywords = (\n        \"how many\", \"which\", \"list\", \"count\", \"total\", \"how much\", \"how full\"\n    )\n    qualitative_keywords = (\n        \"what\", \"describe\", \"tell me about\", \"how does\", \"explain\"\n    )\n\n    if any(keyword in normalized for keyword in quantitative_keywords):\n        return \"text2sql\"\n    if any(keyword in normalized for keyword in qualitative_keywords):\n        return \"rag\"\n    return \"unknown\"\n\n\n\n\n@app.post(\"/api/ask\")\nasync def ask(request: Request):\n    \"\"\"Handle a question and route it to the appropriate tool based on classification.\"\"\"\n    payload = await request.json()\n    question = payload.get(\"question\") if isinstance(payload, dict) else None\n\n    if not isinstance(question, str) or not question.strip():\n        return jsonify({\"error\": \"question field required\"}, status_code=400)\n\n    route = classify_query(question)\n    if route == \"unknown\":\n        return jsonify(\n            {\n                \"answer\": (\n                    \"I can only answer questions about activities. Try asking what an activity is about, \"\n                    \"or how many students have joined.\"\n                ),\n                \"source\": \"direct\",\n                \"confidence\": 1.0,\n            }\n        )\n\n    try:\n        if route == \"rag\":\n            result = rag_search(question)\n        else:\n            result = run_text2sql(question)\n\n        return jsonify(result)\n    except Exception:\n        return jsonify({\"error\": \"tool error\"}, status_code=500)\n\n\n",
+        "label": "src/app.py: \"\"\"\nHigh School Management System API\n\nA super simple FastAPI application that allows students to view and sign up\nfor extracurricular activities at Mergington High School.\n\"\"\"\n\nfrom fastapi import FastAPI, HTTPException, Request\nfrom fastapi.staticfiles import StaticFiles\nfrom fastapi.responses import JSONResponse, RedirectResponse\nimport os\nimport sys\nfrom pathlib import Path\n\nROOT_DIR = Path(__file__).resolve().parents[1]\nif str(ROOT_DIR) not in sys.path:\n    sys.path.insert(0, str(ROOT_DIR))\n\nfrom src.extensions.kb_extension import rag_search\nfrom src.sql.text2sql import run_text2sql\n\napp = FastAPI(title=\"Mergington High School API\",\n              description=\"API for viewing and signing up for extracurricular activities\")\n\n# Mount the static files directory\ncurrent_dir = Path(__file__).parent\napp.mount(\"/static\", StaticFiles(directory=os.path.join(Path(__file__).parent,\n          \"static\")), name=\"static\")\n\n# In-memory activity database\nactivities = {\n    \"Chess Club\": {\n        \"description\": \"Learn strategies and compete in chess tournaments\",\n        \"schedule\": \"Fridays, 3:30 PM - 5:00 PM\",\n        \"max_participants\": 12,\n        \"participants\": [\"michael@mergington.edu\", \"daniel@mergington.edu\"]\n    },\n    \"Programming Class\": {\n        \"description\": \"Learn programming fundamentals and build software projects\",\n        \"schedule\": \"Tuesdays and Thursdays, 3:30 PM - 4:30 PM\",\n        \"max_participants\": 20,\n        \"participants\": [\"emma@mergington.edu\", \"sophia@mergington.edu\"]\n    },\n    \"Gym Class\": {\n        \"description\": \"Physical education and sports activities\",\n        \"schedule\": \"Mondays, Wednesdays, Fridays, 2:00 PM - 3:00 PM\",\n        \"max_participants\": 30,\n        \"participants\": [\"john@mergington.edu\", \"olivia@mergington.edu\"]\n    }\n}\n\n\n@app.get(\"/\")\ndef root():\n    return RedirectResponse(url=\"/static/index.html\")\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.get(\"/activities\")\ndef get_activities():\n    return activities\n\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.post(\"/activities/{activity_name}/signup\")\ndef signup_for_activity(activity_name: str, email: str):\n    \"\"\"Sign up a student for an activity\"\"\"\n    if activity_name not in activities:\n        raise HTTPException(status_code=404, detail=\"Activity not found\")\n\n    # Get the specific activity\n    activity = activities[activity_name]\n\n    # Add student\n    activity[\"participants\"].append(email)\n    return {\"message\": f\"Signed up {email} for {activity_name}\"}\n\n\ndef jsonify(content: dict, status_code: int = 200):\n    \"\"\"Return a JSON response with the given content and status.\"\"\"\n    return JSONResponse(content=content, status_code=status_code)\n\n\ndef classify_query(question: str) -> str:\n    \"\"\"Classify a question as 'rag', 'text2sql', or 'unknown' using keyword matching.\"\"\"\n    normalized = question.strip().lower()\n    quantitative_keywords = (\n        \"how many\", \"which\", \"list\", \"count\", \"total\", \"how much\", \"how full\"\n    )\n    qualitative_keywords = (\n        \"what\", \"describe\", \"tell me about\", \"how does\", \"explain\"\n    )\n\n    if any(keyword in normalized for keyword in quantitative_keywords):\n        return \"text2sql\"\n    if any(keyword in normalized for keyword in qualitative_keywords):\n        return \"rag\"\n    return \"unknown\"\n\n\n\n\n@app.post(\"/api/ask\")\nasync def ask(request: Request):\n    \"\"\"Handle a question and route it to the appropriate tool based on classification.\"\"\"\n    payload = await request.json()\n    question = payload.get(\"question\") if isinstance(payload, dict) else None\n\n    if not isinstance(question, str) or not question.strip():\n        return jsonify({\"error\": \"question field required\"}, status_code=400)\n\n    route = classify_query(question)\n    if route == \"unknown\":\n        return jsonify(\n            {\n                \"answer\": (\n                    \"I can only answer questions about activities. Try asking what an activity is about, \"\n                    \"or how many students have joined.\"\n                ),\n                \"source\": \"direct\",\n                \"confidence\": 1.0,\n            }\n        )\n\n    try:\n        if route == \"rag\":\n            result = rag_search(question)\n        else:\n            result = run_text2sql(question)\n\n        return jsonify(result)\n    except Exception:\n        return jsonify({\"error\": \"tool error\"}, status_code=500)\n\n\n",
+        "id": "7ee4f6f7506813a36794d3700ad3d7178aa2faa36e39c1bb18b9b0dfd99fb05b",
+        "provider": "echo",
+        "metrics": {
+          "score": 4,
+          "testPassCount": 4,
+          "testFailCount": 11,
+          "testErrorCount": 0,
+          "assertPassCount": 4,
+          "assertFailCount": 11,
+          "totalLatencyMs": 40,
+          "tokenUsage": {
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "total": 0,
+            "numRequests": 15,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            },
+            "assertions": {
+              "total": 0,
+              "prompt": 0,
+              "completion": 0,
+              "cached": 0,
+              "numRequests": 0,
+              "completionDetails": {
+                "reasoning": 0,
+                "acceptedPrediction": 0,
+                "rejectedPrediction": 0,
+                "cacheReadInputTokens": 0,
+                "cacheCreationInputTokens": 0
+              }
+            }
+          },
+          "namedScores": {},
+          "namedScoresCount": {},
+          "namedScoreWeights": {},
+          "cost": 0
+        }
+      }
+    ],
+    "results": [
+      {
+        "cost": 0,
+        "error": "Expected output to contain \"def get_activity\"",
+        "gradingResult": {
+          "pass": false,
+          "score": 0,
+          "reason": "Expected output to contain \"def get_activity\"",
+          "namedScores": {},
+          "tokensUsed": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 0
+          },
+          "componentResults": [
+            {
+              "pass": false,
+              "score": 0,
+              "reason": "Expected output to contain \"def get_activity\"",
+              "assertion": {
+                "type": "contains",
+                "value": "def get_activity"
+              }
+            }
+          ]
+        },
+        "id": "85892646-ddd6-4e5c-b806-a60c09ad647a",
+        "latencyMs": 8,
+        "namedScores": {},
+        "prompt": {
+          "raw": "",
+          "label": "src/app.py: \"\"\"\nHigh School Management System API\n\nA super simple FastAPI application that allows students to view and sign up\nfor extracurricular activities at Mergington High School.\n\"\"\"\n\nfrom fastapi import FastAPI, HTTPException, Request\nfrom fastapi.staticfiles import StaticFiles\nfrom fastapi.responses import JSONResponse, RedirectResponse\nimport os\nimport sys\nfrom pathlib import Path\n\nROOT_DIR = Path(__file__).resolve().parents[1]\nif str(ROOT_DIR) not in sys.path:\n    sys.path.insert(0, str(ROOT_DIR))\n\nfrom src.extensions.kb_extension import rag_search\nfrom src.sql.text2sql import run_text2sql\n\napp = FastAPI(title=\"Mergington High School API\",\n              description=\"API for viewing and signing up for extracurricular activities\")\n\n# Mount the static files directory\ncurrent_dir = Path(__file__).parent\napp.mount(\"/static\", StaticFiles(directory=os.path.join(Path(__file__).parent,\n          \"static\")), name=\"static\")\n\n# In-memory activity database\nactivities = {\n    \"Chess Club\": {\n        \"description\": \"Learn strategies and compete in chess tournaments\",\n        \"schedule\": \"Fridays, 3:30 PM - 5:00 PM\",\n        \"max_participants\": 12,\n        \"participants\": [\"michael@mergington.edu\", \"daniel@mergington.edu\"]\n    },\n    \"Programming Class\": {\n        \"description\": \"Learn programming fundamentals and build software projects\",\n        \"schedule\": \"Tuesdays and Thursdays, 3:30 PM - 4:30 PM\",\n        \"max_participants\": 20,\n        \"participants\": [\"emma@mergington.edu\", \"sophia@mergington.edu\"]\n    },\n    \"Gym Class\": {\n        \"description\": \"Physical education and sports activities\",\n        \"schedule\": \"Mondays, Wednesdays, Fridays, 2:00 PM - 3:00 PM\",\n        \"max_participants\": 30,\n        \"participants\": [\"john@mergington.edu\", \"olivia@mergington.edu\"]\n    }\n}\n\n\n@app.get(\"/\")\ndef root():\n    return RedirectResponse(url=\"/static/index.html\")\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.get(\"/activities\")\ndef get_activities():\n    return activities\n\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.post(\"/activities/{activity_name}/signup\")\ndef signup_for_activity(activity_name: str, email: str):\n    \"\"\"Sign up a student for an activity\"\"\"\n    if activity_name not in activities:\n        raise HTTPException(status_code=404, detail=\"Activity not found\")\n\n    # Get the specific activity\n    activity = activities[activity_name]\n\n    # Add student\n    activity[\"participants\"].append(email)\n    return {\"message\": f\"Signed up {email} for {activity_name}\"}\n\n\ndef jsonify(content: dict, status_code: int = 200):\n    \"\"\"Return a JSON response with the given content and status.\"\"\"\n    return JSONResponse(content=content, status_code=status_code)\n\n\ndef classify_query(question: str) -> str:\n    \"\"\"Classify a question as 'rag', 'text2sql', or 'unknown' using keyword matching.\"\"\"\n    normalized = question.strip().lower()\n    quantitative_keywords = (\n        \"how many\", \"which\", \"list\", \"count\", \"total\", \"how much\", \"how full\"\n    )\n    qualitative_keywords = (\n        \"what\", \"describe\", \"tell me about\", \"how does\", \"explain\"\n    )\n\n    if any(keyword in normalized for keyword in quantitative_keywords):\n        return \"text2sql\"\n    if any(keyword in normalized for keyword in qualitative_keywords):\n        return \"rag\"\n    return \"unknown\"\n\n\n\n\n@app.post(\"/api/ask\")\nasync def ask(request: Request):\n    \"\"\"Handle a question and route it to the appropriate tool based on classification.\"\"\"\n    payload = await request.json()\n    question = payload.get(\"question\") if isinstance(payload, dict) else None\n\n    if not isinstance(question, str) or not question.strip():\n        return jsonify({\"error\": \"question field required\"}, status_code=400)\n\n    route = classify_query(question)\n    if route == \"unknown\":\n        return jsonify(\n            {\n                \"answer\": (\n                    \"I can only answer questions about activities. Try asking what an activity is about, \"\n                    \"or how many students have joined.\"\n                ),\n                \"source\": \"direct\",\n                \"confidence\": 1.0,\n            }\n        )\n\n    try:\n        if route == \"rag\":\n            result = rag_search(question)\n        else:\n            result = run_text2sql(question)\n\n        return jsonify(result)\n    except Exception:\n        return jsonify({\"error\": \"tool error\"}, status_code=500)\n\n\n",
+          "config": {}
+        },
+        "promptId": "7ee4f6f7506813a36794d3700ad3d7178aa2faa36e39c1bb18b9b0dfd99fb05b",
+        "promptIdx": 0,
+        "provider": {
+          "id": "echo",
+          "label": ""
+        },
+        "response": {
+          "output": "",
+          "raw": "",
+          "cost": 0,
+          "cached": false,
+          "tokenUsage": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "numRequests": 1
+          },
+          "isRefusal": false,
+          "metadata": {}
+        },
+        "score": 0,
+        "success": false,
+        "testCase": {
+          "description": "Output contains the correct function name",
+          "assert": [
+            {
+              "type": "contains",
+              "value": "def get_activity"
+            }
+          ],
+          "vars": {},
+          "options": {},
+          "metadata": {}
+        },
+        "testIdx": 0,
+        "tokenUsage": {
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "total": 0,
+          "numRequests": 1,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          },
+          "assertions": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          }
+        },
+        "vars": {},
+        "metadata": {
+          "_promptfooFileMetadata": {}
+        },
+        "failureReason": 1
+      },
+      {
+        "cost": 0,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "All assertions passed",
+          "namedScores": {},
+          "tokensUsed": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 0
+          },
+          "componentResults": [
+            {
+              "pass": true,
+              "score": 1,
+              "reason": "Assertion passed",
+              "assertion": {
+                "type": "not-contains",
+                "value": "def get_activities"
+              }
+            }
+          ]
+        },
+        "id": "3648f75a-8dc6-4e2b-9206-9f87c7b4c02d",
+        "latencyMs": 5,
+        "namedScores": {},
+        "prompt": {
+          "raw": "",
+          "label": "src/app.py: \"\"\"\nHigh School Management System API\n\nA super simple FastAPI application that allows students to view and sign up\nfor extracurricular activities at Mergington High School.\n\"\"\"\n\nfrom fastapi import FastAPI, HTTPException, Request\nfrom fastapi.staticfiles import StaticFiles\nfrom fastapi.responses import JSONResponse, RedirectResponse\nimport os\nimport sys\nfrom pathlib import Path\n\nROOT_DIR = Path(__file__).resolve().parents[1]\nif str(ROOT_DIR) not in sys.path:\n    sys.path.insert(0, str(ROOT_DIR))\n\nfrom src.extensions.kb_extension import rag_search\nfrom src.sql.text2sql import run_text2sql\n\napp = FastAPI(title=\"Mergington High School API\",\n              description=\"API for viewing and signing up for extracurricular activities\")\n\n# Mount the static files directory\ncurrent_dir = Path(__file__).parent\napp.mount(\"/static\", StaticFiles(directory=os.path.join(Path(__file__).parent,\n          \"static\")), name=\"static\")\n\n# In-memory activity database\nactivities = {\n    \"Chess Club\": {\n        \"description\": \"Learn strategies and compete in chess tournaments\",\n        \"schedule\": \"Fridays, 3:30 PM - 5:00 PM\",\n        \"max_participants\": 12,\n        \"participants\": [\"michael@mergington.edu\", \"daniel@mergington.edu\"]\n    },\n    \"Programming Class\": {\n        \"description\": \"Learn programming fundamentals and build software projects\",\n        \"schedule\": \"Tuesdays and Thursdays, 3:30 PM - 4:30 PM\",\n        \"max_participants\": 20,\n        \"participants\": [\"emma@mergington.edu\", \"sophia@mergington.edu\"]\n    },\n    \"Gym Class\": {\n        \"description\": \"Physical education and sports activities\",\n        \"schedule\": \"Mondays, Wednesdays, Fridays, 2:00 PM - 3:00 PM\",\n        \"max_participants\": 30,\n        \"participants\": [\"john@mergington.edu\", \"olivia@mergington.edu\"]\n    }\n}\n\n\n@app.get(\"/\")\ndef root():\n    return RedirectResponse(url=\"/static/index.html\")\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.get(\"/activities\")\ndef get_activities():\n    return activities\n\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.post(\"/activities/{activity_name}/signup\")\ndef signup_for_activity(activity_name: str, email: str):\n    \"\"\"Sign up a student for an activity\"\"\"\n    if activity_name not in activities:\n        raise HTTPException(status_code=404, detail=\"Activity not found\")\n\n    # Get the specific activity\n    activity = activities[activity_name]\n\n    # Add student\n    activity[\"participants\"].append(email)\n    return {\"message\": f\"Signed up {email} for {activity_name}\"}\n\n\ndef jsonify(content: dict, status_code: int = 200):\n    \"\"\"Return a JSON response with the given content and status.\"\"\"\n    return JSONResponse(content=content, status_code=status_code)\n\n\ndef classify_query(question: str) -> str:\n    \"\"\"Classify a question as 'rag', 'text2sql', or 'unknown' using keyword matching.\"\"\"\n    normalized = question.strip().lower()\n    quantitative_keywords = (\n        \"how many\", \"which\", \"list\", \"count\", \"total\", \"how much\", \"how full\"\n    )\n    qualitative_keywords = (\n        \"what\", \"describe\", \"tell me about\", \"how does\", \"explain\"\n    )\n\n    if any(keyword in normalized for keyword in quantitative_keywords):\n        return \"text2sql\"\n    if any(keyword in normalized for keyword in qualitative_keywords):\n        return \"rag\"\n    return \"unknown\"\n\n\n\n\n@app.post(\"/api/ask\")\nasync def ask(request: Request):\n    \"\"\"Handle a question and route it to the appropriate tool based on classification.\"\"\"\n    payload = await request.json()\n    question = payload.get(\"question\") if isinstance(payload, dict) else None\n\n    if not isinstance(question, str) or not question.strip():\n        return jsonify({\"error\": \"question field required\"}, status_code=400)\n\n    route = classify_query(question)\n    if route == \"unknown\":\n        return jsonify(\n            {\n                \"answer\": (\n                    \"I can only answer questions about activities. Try asking what an activity is about, \"\n                    \"or how many students have joined.\"\n                ),\n                \"source\": \"direct\",\n                \"confidence\": 1.0,\n            }\n        )\n\n    try:\n        if route == \"rag\":\n            result = rag_search(question)\n        else:\n            result = run_text2sql(question)\n\n        return jsonify(result)\n    except Exception:\n        return jsonify({\"error\": \"tool error\"}, status_code=500)\n\n\n",
+          "config": {}
+        },
+        "promptId": "7ee4f6f7506813a36794d3700ad3d7178aa2faa36e39c1bb18b9b0dfd99fb05b",
+        "promptIdx": 0,
+        "provider": {
+          "id": "echo",
+          "label": ""
+        },
+        "response": {
+          "output": "",
+          "raw": "",
+          "cost": 0,
+          "cached": false,
+          "tokenUsage": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "numRequests": 1
+          },
+          "isRefusal": false,
+          "metadata": {}
+        },
+        "score": 1,
+        "success": true,
+        "testCase": {
+          "description": "Output does NOT contain modification of get_activities",
+          "assert": [
+            {
+              "type": "not-contains",
+              "value": "def get_activities"
+            }
+          ],
+          "vars": {},
+          "options": {},
+          "metadata": {}
+        },
+        "testIdx": 1,
+        "tokenUsage": {
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "total": 0,
+          "numRequests": 1,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          },
+          "assertions": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          }
+        },
+        "vars": {},
+        "metadata": {
+          "_promptfooFileMetadata": {}
+        },
+        "failureReason": 0
+      },
+      {
+        "cost": 0,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "All assertions passed",
+          "namedScores": {},
+          "tokensUsed": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 0
+          },
+          "componentResults": [
+            {
+              "pass": true,
+              "score": 1,
+              "reason": "Assertion passed",
+              "assertion": {
+                "type": "not-contains",
+                "value": "def signup_for_activity"
+              }
+            }
+          ]
+        },
+        "id": "ce124bef-0860-448d-b20e-dc2aac7aeafd",
+        "latencyMs": 3,
+        "namedScores": {},
+        "prompt": {
+          "raw": "",
+          "label": "src/app.py: \"\"\"\nHigh School Management System API\n\nA super simple FastAPI application that allows students to view and sign up\nfor extracurricular activities at Mergington High School.\n\"\"\"\n\nfrom fastapi import FastAPI, HTTPException, Request\nfrom fastapi.staticfiles import StaticFiles\nfrom fastapi.responses import JSONResponse, RedirectResponse\nimport os\nimport sys\nfrom pathlib import Path\n\nROOT_DIR = Path(__file__).resolve().parents[1]\nif str(ROOT_DIR) not in sys.path:\n    sys.path.insert(0, str(ROOT_DIR))\n\nfrom src.extensions.kb_extension import rag_search\nfrom src.sql.text2sql import run_text2sql\n\napp = FastAPI(title=\"Mergington High School API\",\n              description=\"API for viewing and signing up for extracurricular activities\")\n\n# Mount the static files directory\ncurrent_dir = Path(__file__).parent\napp.mount(\"/static\", StaticFiles(directory=os.path.join(Path(__file__).parent,\n          \"static\")), name=\"static\")\n\n# In-memory activity database\nactivities = {\n    \"Chess Club\": {\n        \"description\": \"Learn strategies and compete in chess tournaments\",\n        \"schedule\": \"Fridays, 3:30 PM - 5:00 PM\",\n        \"max_participants\": 12,\n        \"participants\": [\"michael@mergington.edu\", \"daniel@mergington.edu\"]\n    },\n    \"Programming Class\": {\n        \"description\": \"Learn programming fundamentals and build software projects\",\n        \"schedule\": \"Tuesdays and Thursdays, 3:30 PM - 4:30 PM\",\n        \"max_participants\": 20,\n        \"participants\": [\"emma@mergington.edu\", \"sophia@mergington.edu\"]\n    },\n    \"Gym Class\": {\n        \"description\": \"Physical education and sports activities\",\n        \"schedule\": \"Mondays, Wednesdays, Fridays, 2:00 PM - 3:00 PM\",\n        \"max_participants\": 30,\n        \"participants\": [\"john@mergington.edu\", \"olivia@mergington.edu\"]\n    }\n}\n\n\n@app.get(\"/\")\ndef root():\n    return RedirectResponse(url=\"/static/index.html\")\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.get(\"/activities\")\ndef get_activities():\n    return activities\n\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.post(\"/activities/{activity_name}/signup\")\ndef signup_for_activity(activity_name: str, email: str):\n    \"\"\"Sign up a student for an activity\"\"\"\n    if activity_name not in activities:\n        raise HTTPException(status_code=404, detail=\"Activity not found\")\n\n    # Get the specific activity\n    activity = activities[activity_name]\n\n    # Add student\n    activity[\"participants\"].append(email)\n    return {\"message\": f\"Signed up {email} for {activity_name}\"}\n\n\ndef jsonify(content: dict, status_code: int = 200):\n    \"\"\"Return a JSON response with the given content and status.\"\"\"\n    return JSONResponse(content=content, status_code=status_code)\n\n\ndef classify_query(question: str) -> str:\n    \"\"\"Classify a question as 'rag', 'text2sql', or 'unknown' using keyword matching.\"\"\"\n    normalized = question.strip().lower()\n    quantitative_keywords = (\n        \"how many\", \"which\", \"list\", \"count\", \"total\", \"how much\", \"how full\"\n    )\n    qualitative_keywords = (\n        \"what\", \"describe\", \"tell me about\", \"how does\", \"explain\"\n    )\n\n    if any(keyword in normalized for keyword in quantitative_keywords):\n        return \"text2sql\"\n    if any(keyword in normalized for keyword in qualitative_keywords):\n        return \"rag\"\n    return \"unknown\"\n\n\n\n\n@app.post(\"/api/ask\")\nasync def ask(request: Request):\n    \"\"\"Handle a question and route it to the appropriate tool based on classification.\"\"\"\n    payload = await request.json()\n    question = payload.get(\"question\") if isinstance(payload, dict) else None\n\n    if not isinstance(question, str) or not question.strip():\n        return jsonify({\"error\": \"question field required\"}, status_code=400)\n\n    route = classify_query(question)\n    if route == \"unknown\":\n        return jsonify(\n            {\n                \"answer\": (\n                    \"I can only answer questions about activities. Try asking what an activity is about, \"\n                    \"or how many students have joined.\"\n                ),\n                \"source\": \"direct\",\n                \"confidence\": 1.0,\n            }\n        )\n\n    try:\n        if route == \"rag\":\n            result = rag_search(question)\n        else:\n            result = run_text2sql(question)\n\n        return jsonify(result)\n    except Exception:\n        return jsonify({\"error\": \"tool error\"}, status_code=500)\n\n\n",
+          "config": {}
+        },
+        "promptId": "7ee4f6f7506813a36794d3700ad3d7178aa2faa36e39c1bb18b9b0dfd99fb05b",
+        "promptIdx": 0,
+        "provider": {
+          "id": "echo",
+          "label": ""
+        },
+        "response": {
+          "output": "",
+          "raw": "",
+          "cost": 0,
+          "cached": false,
+          "tokenUsage": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "numRequests": 1
+          },
+          "isRefusal": false,
+          "metadata": {}
+        },
+        "score": 1,
+        "success": true,
+        "testCase": {
+          "description": "Output does NOT include the existing signup route",
+          "assert": [
+            {
+              "type": "not-contains",
+              "value": "def signup_for_activity"
+            }
+          ],
+          "vars": {},
+          "options": {},
+          "metadata": {}
+        },
+        "testIdx": 2,
+        "tokenUsage": {
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "total": 0,
+          "numRequests": 1,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          },
+          "assertions": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          }
+        },
+        "vars": {},
+        "metadata": {
+          "_promptfooFileMetadata": {}
+        },
+        "failureReason": 0
+      },
+      {
+        "cost": 0,
+        "error": "Expected output to contain \"jsonify\"",
+        "gradingResult": {
+          "pass": false,
+          "score": 0,
+          "reason": "Expected output to contain \"jsonify\"",
+          "namedScores": {},
+          "tokensUsed": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 0
+          },
+          "componentResults": [
+            {
+              "pass": false,
+              "score": 0,
+              "reason": "Expected output to contain \"jsonify\"",
+              "assertion": {
+                "type": "contains",
+                "value": "jsonify"
+              }
+            }
+          ]
+        },
+        "id": "75694a93-98cc-4148-a5d0-c4148887136b",
+        "latencyMs": 12,
+        "namedScores": {},
+        "prompt": {
+          "raw": "",
+          "label": "src/app.py: \"\"\"\nHigh School Management System API\n\nA super simple FastAPI application that allows students to view and sign up\nfor extracurricular activities at Mergington High School.\n\"\"\"\n\nfrom fastapi import FastAPI, HTTPException, Request\nfrom fastapi.staticfiles import StaticFiles\nfrom fastapi.responses import JSONResponse, RedirectResponse\nimport os\nimport sys\nfrom pathlib import Path\n\nROOT_DIR = Path(__file__).resolve().parents[1]\nif str(ROOT_DIR) not in sys.path:\n    sys.path.insert(0, str(ROOT_DIR))\n\nfrom src.extensions.kb_extension import rag_search\nfrom src.sql.text2sql import run_text2sql\n\napp = FastAPI(title=\"Mergington High School API\",\n              description=\"API for viewing and signing up for extracurricular activities\")\n\n# Mount the static files directory\ncurrent_dir = Path(__file__).parent\napp.mount(\"/static\", StaticFiles(directory=os.path.join(Path(__file__).parent,\n          \"static\")), name=\"static\")\n\n# In-memory activity database\nactivities = {\n    \"Chess Club\": {\n        \"description\": \"Learn strategies and compete in chess tournaments\",\n        \"schedule\": \"Fridays, 3:30 PM - 5:00 PM\",\n        \"max_participants\": 12,\n        \"participants\": [\"michael@mergington.edu\", \"daniel@mergington.edu\"]\n    },\n    \"Programming Class\": {\n        \"description\": \"Learn programming fundamentals and build software projects\",\n        \"schedule\": \"Tuesdays and Thursdays, 3:30 PM - 4:30 PM\",\n        \"max_participants\": 20,\n        \"participants\": [\"emma@mergington.edu\", \"sophia@mergington.edu\"]\n    },\n    \"Gym Class\": {\n        \"description\": \"Physical education and sports activities\",\n        \"schedule\": \"Mondays, Wednesdays, Fridays, 2:00 PM - 3:00 PM\",\n        \"max_participants\": 30,\n        \"participants\": [\"john@mergington.edu\", \"olivia@mergington.edu\"]\n    }\n}\n\n\n@app.get(\"/\")\ndef root():\n    return RedirectResponse(url=\"/static/index.html\")\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.get(\"/activities\")\ndef get_activities():\n    return activities\n\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.post(\"/activities/{activity_name}/signup\")\ndef signup_for_activity(activity_name: str, email: str):\n    \"\"\"Sign up a student for an activity\"\"\"\n    if activity_name not in activities:\n        raise HTTPException(status_code=404, detail=\"Activity not found\")\n\n    # Get the specific activity\n    activity = activities[activity_name]\n\n    # Add student\n    activity[\"participants\"].append(email)\n    return {\"message\": f\"Signed up {email} for {activity_name}\"}\n\n\ndef jsonify(content: dict, status_code: int = 200):\n    \"\"\"Return a JSON response with the given content and status.\"\"\"\n    return JSONResponse(content=content, status_code=status_code)\n\n\ndef classify_query(question: str) -> str:\n    \"\"\"Classify a question as 'rag', 'text2sql', or 'unknown' using keyword matching.\"\"\"\n    normalized = question.strip().lower()\n    quantitative_keywords = (\n        \"how many\", \"which\", \"list\", \"count\", \"total\", \"how much\", \"how full\"\n    )\n    qualitative_keywords = (\n        \"what\", \"describe\", \"tell me about\", \"how does\", \"explain\"\n    )\n\n    if any(keyword in normalized for keyword in quantitative_keywords):\n        return \"text2sql\"\n    if any(keyword in normalized for keyword in qualitative_keywords):\n        return \"rag\"\n    return \"unknown\"\n\n\n\n\n@app.post(\"/api/ask\")\nasync def ask(request: Request):\n    \"\"\"Handle a question and route it to the appropriate tool based on classification.\"\"\"\n    payload = await request.json()\n    question = payload.get(\"question\") if isinstance(payload, dict) else None\n\n    if not isinstance(question, str) or not question.strip():\n        return jsonify({\"error\": \"question field required\"}, status_code=400)\n\n    route = classify_query(question)\n    if route == \"unknown\":\n        return jsonify(\n            {\n                \"answer\": (\n                    \"I can only answer questions about activities. Try asking what an activity is about, \"\n                    \"or how many students have joined.\"\n                ),\n                \"source\": \"direct\",\n                \"confidence\": 1.0,\n            }\n        )\n\n    try:\n        if route == \"rag\":\n            result = rag_search(question)\n        else:\n            result = run_text2sql(question)\n\n        return jsonify(result)\n    except Exception:\n        return jsonify({\"error\": \"tool error\"}, status_code=500)\n\n\n",
+          "config": {}
+        },
+        "promptId": "7ee4f6f7506813a36794d3700ad3d7178aa2faa36e39c1bb18b9b0dfd99fb05b",
+        "promptIdx": 0,
+        "provider": {
+          "id": "echo",
+          "label": ""
+        },
+        "response": {
+          "output": "",
+          "raw": "",
+          "cost": 0,
+          "cached": false,
+          "tokenUsage": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "numRequests": 1
+          },
+          "isRefusal": false,
+          "metadata": {}
+        },
+        "score": 0,
+        "success": false,
+        "testCase": {
+          "description": "Output uses jsonify",
+          "assert": [
+            {
+              "type": "contains",
+              "value": "jsonify"
+            }
+          ],
+          "vars": {},
+          "options": {},
+          "metadata": {}
+        },
+        "testIdx": 3,
+        "tokenUsage": {
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "total": 0,
+          "numRequests": 1,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          },
+          "assertions": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          }
+        },
+        "vars": {},
+        "metadata": {
+          "_promptfooFileMetadata": {}
+        },
+        "failureReason": 1
+      },
+      {
+        "cost": 0,
+        "error": "Expected output to contain \"status_code=404\"",
+        "gradingResult": {
+          "pass": false,
+          "score": 0,
+          "reason": "Expected output to contain \"status_code=404\"",
+          "namedScores": {},
+          "tokensUsed": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 0
+          },
+          "componentResults": [
+            {
+              "pass": false,
+              "score": 0,
+              "reason": "Expected output to contain \"status_code=404\"",
+              "assertion": {
+                "type": "contains",
+                "value": "status_code=404"
+              }
+            }
+          ]
+        },
+        "id": "1d1c7d4c-2916-4193-8cdb-8c413e21c32b",
+        "latencyMs": 1,
+        "namedScores": {},
+        "prompt": {
+          "raw": "",
+          "label": "src/app.py: \"\"\"\nHigh School Management System API\n\nA super simple FastAPI application that allows students to view and sign up\nfor extracurricular activities at Mergington High School.\n\"\"\"\n\nfrom fastapi import FastAPI, HTTPException, Request\nfrom fastapi.staticfiles import StaticFiles\nfrom fastapi.responses import JSONResponse, RedirectResponse\nimport os\nimport sys\nfrom pathlib import Path\n\nROOT_DIR = Path(__file__).resolve().parents[1]\nif str(ROOT_DIR) not in sys.path:\n    sys.path.insert(0, str(ROOT_DIR))\n\nfrom src.extensions.kb_extension import rag_search\nfrom src.sql.text2sql import run_text2sql\n\napp = FastAPI(title=\"Mergington High School API\",\n              description=\"API for viewing and signing up for extracurricular activities\")\n\n# Mount the static files directory\ncurrent_dir = Path(__file__).parent\napp.mount(\"/static\", StaticFiles(directory=os.path.join(Path(__file__).parent,\n          \"static\")), name=\"static\")\n\n# In-memory activity database\nactivities = {\n    \"Chess Club\": {\n        \"description\": \"Learn strategies and compete in chess tournaments\",\n        \"schedule\": \"Fridays, 3:30 PM - 5:00 PM\",\n        \"max_participants\": 12,\n        \"participants\": [\"michael@mergington.edu\", \"daniel@mergington.edu\"]\n    },\n    \"Programming Class\": {\n        \"description\": \"Learn programming fundamentals and build software projects\",\n        \"schedule\": \"Tuesdays and Thursdays, 3:30 PM - 4:30 PM\",\n        \"max_participants\": 20,\n        \"participants\": [\"emma@mergington.edu\", \"sophia@mergington.edu\"]\n    },\n    \"Gym Class\": {\n        \"description\": \"Physical education and sports activities\",\n        \"schedule\": \"Mondays, Wednesdays, Fridays, 2:00 PM - 3:00 PM\",\n        \"max_participants\": 30,\n        \"participants\": [\"john@mergington.edu\", \"olivia@mergington.edu\"]\n    }\n}\n\n\n@app.get(\"/\")\ndef root():\n    return RedirectResponse(url=\"/static/index.html\")\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.get(\"/activities\")\ndef get_activities():\n    return activities\n\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.post(\"/activities/{activity_name}/signup\")\ndef signup_for_activity(activity_name: str, email: str):\n    \"\"\"Sign up a student for an activity\"\"\"\n    if activity_name not in activities:\n        raise HTTPException(status_code=404, detail=\"Activity not found\")\n\n    # Get the specific activity\n    activity = activities[activity_name]\n\n    # Add student\n    activity[\"participants\"].append(email)\n    return {\"message\": f\"Signed up {email} for {activity_name}\"}\n\n\ndef jsonify(content: dict, status_code: int = 200):\n    \"\"\"Return a JSON response with the given content and status.\"\"\"\n    return JSONResponse(content=content, status_code=status_code)\n\n\ndef classify_query(question: str) -> str:\n    \"\"\"Classify a question as 'rag', 'text2sql', or 'unknown' using keyword matching.\"\"\"\n    normalized = question.strip().lower()\n    quantitative_keywords = (\n        \"how many\", \"which\", \"list\", \"count\", \"total\", \"how much\", \"how full\"\n    )\n    qualitative_keywords = (\n        \"what\", \"describe\", \"tell me about\", \"how does\", \"explain\"\n    )\n\n    if any(keyword in normalized for keyword in quantitative_keywords):\n        return \"text2sql\"\n    if any(keyword in normalized for keyword in qualitative_keywords):\n        return \"rag\"\n    return \"unknown\"\n\n\n\n\n@app.post(\"/api/ask\")\nasync def ask(request: Request):\n    \"\"\"Handle a question and route it to the appropriate tool based on classification.\"\"\"\n    payload = await request.json()\n    question = payload.get(\"question\") if isinstance(payload, dict) else None\n\n    if not isinstance(question, str) or not question.strip():\n        return jsonify({\"error\": \"question field required\"}, status_code=400)\n\n    route = classify_query(question)\n    if route == \"unknown\":\n        return jsonify(\n            {\n                \"answer\": (\n                    \"I can only answer questions about activities. Try asking what an activity is about, \"\n                    \"or how many students have joined.\"\n                ),\n                \"source\": \"direct\",\n                \"confidence\": 1.0,\n            }\n        )\n\n    try:\n        if route == \"rag\":\n            result = rag_search(question)\n        else:\n            result = run_text2sql(question)\n\n        return jsonify(result)\n    except Exception:\n        return jsonify({\"error\": \"tool error\"}, status_code=500)\n\n\n",
+          "config": {}
+        },
+        "promptId": "7ee4f6f7506813a36794d3700ad3d7178aa2faa36e39c1bb18b9b0dfd99fb05b",
+        "promptIdx": 0,
+        "provider": {
+          "id": "echo",
+          "label": ""
+        },
+        "response": {
+          "output": "",
+          "raw": "",
+          "cost": 0,
+          "cached": false,
+          "tokenUsage": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "numRequests": 1
+          },
+          "isRefusal": false,
+          "metadata": {}
+        },
+        "score": 0,
+        "success": false,
+        "testCase": {
+          "description": "Output uses 404 status for not found",
+          "assert": [
+            {
+              "type": "contains",
+              "value": "status_code=404"
+            }
+          ],
+          "vars": {},
+          "options": {},
+          "metadata": {}
+        },
+        "testIdx": 4,
+        "tokenUsage": {
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "total": 0,
+          "numRequests": 1,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          },
+          "assertions": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          }
+        },
+        "vars": {},
+        "metadata": {
+          "_promptfooFileMetadata": {}
+        },
+        "failureReason": 1
+      },
+      {
+        "cost": 0,
+        "error": "Expected output to contain \"def ask\"",
+        "gradingResult": {
+          "pass": false,
+          "score": 0,
+          "reason": "Expected output to contain \"def ask\"",
+          "namedScores": {},
+          "tokensUsed": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 0
+          },
+          "componentResults": [
+            {
+              "pass": false,
+              "score": 0,
+              "reason": "Expected output to contain \"def ask\"",
+              "assertion": {
+                "type": "contains",
+                "value": "def ask"
+              }
+            }
+          ]
+        },
+        "id": "331916be-c446-4d69-8c0b-2cf1ea41e830",
+        "latencyMs": 1,
+        "namedScores": {},
+        "prompt": {
+          "raw": "",
+          "label": "src/app.py: \"\"\"\nHigh School Management System API\n\nA super simple FastAPI application that allows students to view and sign up\nfor extracurricular activities at Mergington High School.\n\"\"\"\n\nfrom fastapi import FastAPI, HTTPException, Request\nfrom fastapi.staticfiles import StaticFiles\nfrom fastapi.responses import JSONResponse, RedirectResponse\nimport os\nimport sys\nfrom pathlib import Path\n\nROOT_DIR = Path(__file__).resolve().parents[1]\nif str(ROOT_DIR) not in sys.path:\n    sys.path.insert(0, str(ROOT_DIR))\n\nfrom src.extensions.kb_extension import rag_search\nfrom src.sql.text2sql import run_text2sql\n\napp = FastAPI(title=\"Mergington High School API\",\n              description=\"API for viewing and signing up for extracurricular activities\")\n\n# Mount the static files directory\ncurrent_dir = Path(__file__).parent\napp.mount(\"/static\", StaticFiles(directory=os.path.join(Path(__file__).parent,\n          \"static\")), name=\"static\")\n\n# In-memory activity database\nactivities = {\n    \"Chess Club\": {\n        \"description\": \"Learn strategies and compete in chess tournaments\",\n        \"schedule\": \"Fridays, 3:30 PM - 5:00 PM\",\n        \"max_participants\": 12,\n        \"participants\": [\"michael@mergington.edu\", \"daniel@mergington.edu\"]\n    },\n    \"Programming Class\": {\n        \"description\": \"Learn programming fundamentals and build software projects\",\n        \"schedule\": \"Tuesdays and Thursdays, 3:30 PM - 4:30 PM\",\n        \"max_participants\": 20,\n        \"participants\": [\"emma@mergington.edu\", \"sophia@mergington.edu\"]\n    },\n    \"Gym Class\": {\n        \"description\": \"Physical education and sports activities\",\n        \"schedule\": \"Mondays, Wednesdays, Fridays, 2:00 PM - 3:00 PM\",\n        \"max_participants\": 30,\n        \"participants\": [\"john@mergington.edu\", \"olivia@mergington.edu\"]\n    }\n}\n\n\n@app.get(\"/\")\ndef root():\n    return RedirectResponse(url=\"/static/index.html\")\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.get(\"/activities\")\ndef get_activities():\n    return activities\n\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.post(\"/activities/{activity_name}/signup\")\ndef signup_for_activity(activity_name: str, email: str):\n    \"\"\"Sign up a student for an activity\"\"\"\n    if activity_name not in activities:\n        raise HTTPException(status_code=404, detail=\"Activity not found\")\n\n    # Get the specific activity\n    activity = activities[activity_name]\n\n    # Add student\n    activity[\"participants\"].append(email)\n    return {\"message\": f\"Signed up {email} for {activity_name}\"}\n\n\ndef jsonify(content: dict, status_code: int = 200):\n    \"\"\"Return a JSON response with the given content and status.\"\"\"\n    return JSONResponse(content=content, status_code=status_code)\n\n\ndef classify_query(question: str) -> str:\n    \"\"\"Classify a question as 'rag', 'text2sql', or 'unknown' using keyword matching.\"\"\"\n    normalized = question.strip().lower()\n    quantitative_keywords = (\n        \"how many\", \"which\", \"list\", \"count\", \"total\", \"how much\", \"how full\"\n    )\n    qualitative_keywords = (\n        \"what\", \"describe\", \"tell me about\", \"how does\", \"explain\"\n    )\n\n    if any(keyword in normalized for keyword in quantitative_keywords):\n        return \"text2sql\"\n    if any(keyword in normalized for keyword in qualitative_keywords):\n        return \"rag\"\n    return \"unknown\"\n\n\n\n\n@app.post(\"/api/ask\")\nasync def ask(request: Request):\n    \"\"\"Handle a question and route it to the appropriate tool based on classification.\"\"\"\n    payload = await request.json()\n    question = payload.get(\"question\") if isinstance(payload, dict) else None\n\n    if not isinstance(question, str) or not question.strip():\n        return jsonify({\"error\": \"question field required\"}, status_code=400)\n\n    route = classify_query(question)\n    if route == \"unknown\":\n        return jsonify(\n            {\n                \"answer\": (\n                    \"I can only answer questions about activities. Try asking what an activity is about, \"\n                    \"or how many students have joined.\"\n                ),\n                \"source\": \"direct\",\n                \"confidence\": 1.0,\n            }\n        )\n\n    try:\n        if route == \"rag\":\n            result = rag_search(question)\n        else:\n            result = run_text2sql(question)\n\n        return jsonify(result)\n    except Exception:\n        return jsonify({\"error\": \"tool error\"}, status_code=500)\n\n\n",
+          "config": {}
+        },
+        "promptId": "7ee4f6f7506813a36794d3700ad3d7178aa2faa36e39c1bb18b9b0dfd99fb05b",
+        "promptIdx": 0,
+        "provider": {
+          "id": "echo",
+          "label": ""
+        },
+        "response": {
+          "output": "",
+          "raw": "",
+          "cost": 0,
+          "cached": false,
+          "tokenUsage": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "numRequests": 1
+          },
+          "isRefusal": false,
+          "metadata": {}
+        },
+        "score": 0,
+        "success": false,
+        "testCase": {
+          "description": "Capstone: ask endpoint has correct function name",
+          "assert": [
+            {
+              "type": "contains",
+              "value": "def ask"
+            }
+          ],
+          "vars": {},
+          "options": {},
+          "metadata": {}
+        },
+        "testIdx": 5,
+        "tokenUsage": {
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "total": 0,
+          "numRequests": 1,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          },
+          "assertions": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          }
+        },
+        "vars": {},
+        "metadata": {
+          "_promptfooFileMetadata": {}
+        },
+        "failureReason": 1
+      },
+      {
+        "cost": 0,
+        "error": "Expected output to contain \"/api/ask\"",
+        "gradingResult": {
+          "pass": false,
+          "score": 0,
+          "reason": "Expected output to contain \"/api/ask\"",
+          "namedScores": {},
+          "tokensUsed": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 0
+          },
+          "componentResults": [
+            {
+              "pass": false,
+              "score": 0,
+              "reason": "Expected output to contain \"/api/ask\"",
+              "assertion": {
+                "type": "contains",
+                "value": "/api/ask"
+              }
+            }
+          ]
+        },
+        "id": "dfc48314-6199-43c5-93c8-31ba5cf3bdb5",
+        "latencyMs": 1,
+        "namedScores": {},
+        "prompt": {
+          "raw": "",
+          "label": "src/app.py: \"\"\"\nHigh School Management System API\n\nA super simple FastAPI application that allows students to view and sign up\nfor extracurricular activities at Mergington High School.\n\"\"\"\n\nfrom fastapi import FastAPI, HTTPException, Request\nfrom fastapi.staticfiles import StaticFiles\nfrom fastapi.responses import JSONResponse, RedirectResponse\nimport os\nimport sys\nfrom pathlib import Path\n\nROOT_DIR = Path(__file__).resolve().parents[1]\nif str(ROOT_DIR) not in sys.path:\n    sys.path.insert(0, str(ROOT_DIR))\n\nfrom src.extensions.kb_extension import rag_search\nfrom src.sql.text2sql import run_text2sql\n\napp = FastAPI(title=\"Mergington High School API\",\n              description=\"API for viewing and signing up for extracurricular activities\")\n\n# Mount the static files directory\ncurrent_dir = Path(__file__).parent\napp.mount(\"/static\", StaticFiles(directory=os.path.join(Path(__file__).parent,\n          \"static\")), name=\"static\")\n\n# In-memory activity database\nactivities = {\n    \"Chess Club\": {\n        \"description\": \"Learn strategies and compete in chess tournaments\",\n        \"schedule\": \"Fridays, 3:30 PM - 5:00 PM\",\n        \"max_participants\": 12,\n        \"participants\": [\"michael@mergington.edu\", \"daniel@mergington.edu\"]\n    },\n    \"Programming Class\": {\n        \"description\": \"Learn programming fundamentals and build software projects\",\n        \"schedule\": \"Tuesdays and Thursdays, 3:30 PM - 4:30 PM\",\n        \"max_participants\": 20,\n        \"participants\": [\"emma@mergington.edu\", \"sophia@mergington.edu\"]\n    },\n    \"Gym Class\": {\n        \"description\": \"Physical education and sports activities\",\n        \"schedule\": \"Mondays, Wednesdays, Fridays, 2:00 PM - 3:00 PM\",\n        \"max_participants\": 30,\n        \"participants\": [\"john@mergington.edu\", \"olivia@mergington.edu\"]\n    }\n}\n\n\n@app.get(\"/\")\ndef root():\n    return RedirectResponse(url=\"/static/index.html\")\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.get(\"/activities\")\ndef get_activities():\n    return activities\n\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.post(\"/activities/{activity_name}/signup\")\ndef signup_for_activity(activity_name: str, email: str):\n    \"\"\"Sign up a student for an activity\"\"\"\n    if activity_name not in activities:\n        raise HTTPException(status_code=404, detail=\"Activity not found\")\n\n    # Get the specific activity\n    activity = activities[activity_name]\n\n    # Add student\n    activity[\"participants\"].append(email)\n    return {\"message\": f\"Signed up {email} for {activity_name}\"}\n\n\ndef jsonify(content: dict, status_code: int = 200):\n    \"\"\"Return a JSON response with the given content and status.\"\"\"\n    return JSONResponse(content=content, status_code=status_code)\n\n\ndef classify_query(question: str) -> str:\n    \"\"\"Classify a question as 'rag', 'text2sql', or 'unknown' using keyword matching.\"\"\"\n    normalized = question.strip().lower()\n    quantitative_keywords = (\n        \"how many\", \"which\", \"list\", \"count\", \"total\", \"how much\", \"how full\"\n    )\n    qualitative_keywords = (\n        \"what\", \"describe\", \"tell me about\", \"how does\", \"explain\"\n    )\n\n    if any(keyword in normalized for keyword in quantitative_keywords):\n        return \"text2sql\"\n    if any(keyword in normalized for keyword in qualitative_keywords):\n        return \"rag\"\n    return \"unknown\"\n\n\n\n\n@app.post(\"/api/ask\")\nasync def ask(request: Request):\n    \"\"\"Handle a question and route it to the appropriate tool based on classification.\"\"\"\n    payload = await request.json()\n    question = payload.get(\"question\") if isinstance(payload, dict) else None\n\n    if not isinstance(question, str) or not question.strip():\n        return jsonify({\"error\": \"question field required\"}, status_code=400)\n\n    route = classify_query(question)\n    if route == \"unknown\":\n        return jsonify(\n            {\n                \"answer\": (\n                    \"I can only answer questions about activities. Try asking what an activity is about, \"\n                    \"or how many students have joined.\"\n                ),\n                \"source\": \"direct\",\n                \"confidence\": 1.0,\n            }\n        )\n\n    try:\n        if route == \"rag\":\n            result = rag_search(question)\n        else:\n            result = run_text2sql(question)\n\n        return jsonify(result)\n    except Exception:\n        return jsonify({\"error\": \"tool error\"}, status_code=500)\n\n\n",
+          "config": {}
+        },
+        "promptId": "7ee4f6f7506813a36794d3700ad3d7178aa2faa36e39c1bb18b9b0dfd99fb05b",
+        "promptIdx": 0,
+        "provider": {
+          "id": "echo",
+          "label": ""
+        },
+        "response": {
+          "output": "",
+          "raw": "",
+          "cost": 0,
+          "cached": false,
+          "tokenUsage": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "numRequests": 1
+          },
+          "isRefusal": false,
+          "metadata": {}
+        },
+        "score": 0,
+        "success": false,
+        "testCase": {
+          "description": "Capstone: ask endpoint uses correct route",
+          "assert": [
+            {
+              "type": "contains",
+              "value": "/api/ask"
+            }
+          ],
+          "vars": {},
+          "options": {},
+          "metadata": {}
+        },
+        "testIdx": 6,
+        "tokenUsage": {
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "total": 0,
+          "numRequests": 1,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          },
+          "assertions": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          }
+        },
+        "vars": {},
+        "metadata": {
+          "_promptfooFileMetadata": {}
+        },
+        "failureReason": 1
+      },
+      {
+        "cost": 0,
+        "error": "Expected output to contain \"POST\"",
+        "gradingResult": {
+          "pass": false,
+          "score": 0,
+          "reason": "Expected output to contain \"POST\"",
+          "namedScores": {},
+          "tokensUsed": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 0
+          },
+          "componentResults": [
+            {
+              "pass": false,
+              "score": 0,
+              "reason": "Expected output to contain \"POST\"",
+              "assertion": {
+                "type": "contains",
+                "value": "POST"
+              }
+            }
+          ]
+        },
+        "id": "1035e10a-4eca-43cc-b0e9-ac02a912e192",
+        "latencyMs": 1,
+        "namedScores": {},
+        "prompt": {
+          "raw": "",
+          "label": "src/app.py: \"\"\"\nHigh School Management System API\n\nA super simple FastAPI application that allows students to view and sign up\nfor extracurricular activities at Mergington High School.\n\"\"\"\n\nfrom fastapi import FastAPI, HTTPException, Request\nfrom fastapi.staticfiles import StaticFiles\nfrom fastapi.responses import JSONResponse, RedirectResponse\nimport os\nimport sys\nfrom pathlib import Path\n\nROOT_DIR = Path(__file__).resolve().parents[1]\nif str(ROOT_DIR) not in sys.path:\n    sys.path.insert(0, str(ROOT_DIR))\n\nfrom src.extensions.kb_extension import rag_search\nfrom src.sql.text2sql import run_text2sql\n\napp = FastAPI(title=\"Mergington High School API\",\n              description=\"API for viewing and signing up for extracurricular activities\")\n\n# Mount the static files directory\ncurrent_dir = Path(__file__).parent\napp.mount(\"/static\", StaticFiles(directory=os.path.join(Path(__file__).parent,\n          \"static\")), name=\"static\")\n\n# In-memory activity database\nactivities = {\n    \"Chess Club\": {\n        \"description\": \"Learn strategies and compete in chess tournaments\",\n        \"schedule\": \"Fridays, 3:30 PM - 5:00 PM\",\n        \"max_participants\": 12,\n        \"participants\": [\"michael@mergington.edu\", \"daniel@mergington.edu\"]\n    },\n    \"Programming Class\": {\n        \"description\": \"Learn programming fundamentals and build software projects\",\n        \"schedule\": \"Tuesdays and Thursdays, 3:30 PM - 4:30 PM\",\n        \"max_participants\": 20,\n        \"participants\": [\"emma@mergington.edu\", \"sophia@mergington.edu\"]\n    },\n    \"Gym Class\": {\n        \"description\": \"Physical education and sports activities\",\n        \"schedule\": \"Mondays, Wednesdays, Fridays, 2:00 PM - 3:00 PM\",\n        \"max_participants\": 30,\n        \"participants\": [\"john@mergington.edu\", \"olivia@mergington.edu\"]\n    }\n}\n\n\n@app.get(\"/\")\ndef root():\n    return RedirectResponse(url=\"/static/index.html\")\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.get(\"/activities\")\ndef get_activities():\n    return activities\n\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.post(\"/activities/{activity_name}/signup\")\ndef signup_for_activity(activity_name: str, email: str):\n    \"\"\"Sign up a student for an activity\"\"\"\n    if activity_name not in activities:\n        raise HTTPException(status_code=404, detail=\"Activity not found\")\n\n    # Get the specific activity\n    activity = activities[activity_name]\n\n    # Add student\n    activity[\"participants\"].append(email)\n    return {\"message\": f\"Signed up {email} for {activity_name}\"}\n\n\ndef jsonify(content: dict, status_code: int = 200):\n    \"\"\"Return a JSON response with the given content and status.\"\"\"\n    return JSONResponse(content=content, status_code=status_code)\n\n\ndef classify_query(question: str) -> str:\n    \"\"\"Classify a question as 'rag', 'text2sql', or 'unknown' using keyword matching.\"\"\"\n    normalized = question.strip().lower()\n    quantitative_keywords = (\n        \"how many\", \"which\", \"list\", \"count\", \"total\", \"how much\", \"how full\"\n    )\n    qualitative_keywords = (\n        \"what\", \"describe\", \"tell me about\", \"how does\", \"explain\"\n    )\n\n    if any(keyword in normalized for keyword in quantitative_keywords):\n        return \"text2sql\"\n    if any(keyword in normalized for keyword in qualitative_keywords):\n        return \"rag\"\n    return \"unknown\"\n\n\n\n\n@app.post(\"/api/ask\")\nasync def ask(request: Request):\n    \"\"\"Handle a question and route it to the appropriate tool based on classification.\"\"\"\n    payload = await request.json()\n    question = payload.get(\"question\") if isinstance(payload, dict) else None\n\n    if not isinstance(question, str) or not question.strip():\n        return jsonify({\"error\": \"question field required\"}, status_code=400)\n\n    route = classify_query(question)\n    if route == \"unknown\":\n        return jsonify(\n            {\n                \"answer\": (\n                    \"I can only answer questions about activities. Try asking what an activity is about, \"\n                    \"or how many students have joined.\"\n                ),\n                \"source\": \"direct\",\n                \"confidence\": 1.0,\n            }\n        )\n\n    try:\n        if route == \"rag\":\n            result = rag_search(question)\n        else:\n            result = run_text2sql(question)\n\n        return jsonify(result)\n    except Exception:\n        return jsonify({\"error\": \"tool error\"}, status_code=500)\n\n\n",
+          "config": {}
+        },
+        "promptId": "7ee4f6f7506813a36794d3700ad3d7178aa2faa36e39c1bb18b9b0dfd99fb05b",
+        "promptIdx": 0,
+        "provider": {
+          "id": "echo",
+          "label": ""
+        },
+        "response": {
+          "output": "",
+          "raw": "",
+          "cost": 0,
+          "cached": false,
+          "tokenUsage": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "numRequests": 1
+          },
+          "isRefusal": false,
+          "metadata": {}
+        },
+        "score": 0,
+        "success": false,
+        "testCase": {
+          "description": "Capstone: endpoint accepts POST method",
+          "assert": [
+            {
+              "type": "contains",
+              "value": "POST"
+            }
+          ],
+          "vars": {},
+          "options": {},
+          "metadata": {}
+        },
+        "testIdx": 7,
+        "tokenUsage": {
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "total": 0,
+          "numRequests": 1,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          },
+          "assertions": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          }
+        },
+        "vars": {},
+        "metadata": {
+          "_promptfooFileMetadata": {}
+        },
+        "failureReason": 1
+      },
+      {
+        "cost": 0,
+        "error": "Expected output to contain \"classify_query\"",
+        "gradingResult": {
+          "pass": false,
+          "score": 0,
+          "reason": "Expected output to contain \"classify_query\"",
+          "namedScores": {},
+          "tokensUsed": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 0
+          },
+          "componentResults": [
+            {
+              "pass": false,
+              "score": 0,
+              "reason": "Expected output to contain \"classify_query\"",
+              "assertion": {
+                "type": "contains",
+                "value": "classify_query"
+              }
+            }
+          ]
+        },
+        "id": "861cd7bc-57a9-48a8-8b52-63e0425d63b9",
+        "latencyMs": 1,
+        "namedScores": {},
+        "prompt": {
+          "raw": "",
+          "label": "src/app.py: \"\"\"\nHigh School Management System API\n\nA super simple FastAPI application that allows students to view and sign up\nfor extracurricular activities at Mergington High School.\n\"\"\"\n\nfrom fastapi import FastAPI, HTTPException, Request\nfrom fastapi.staticfiles import StaticFiles\nfrom fastapi.responses import JSONResponse, RedirectResponse\nimport os\nimport sys\nfrom pathlib import Path\n\nROOT_DIR = Path(__file__).resolve().parents[1]\nif str(ROOT_DIR) not in sys.path:\n    sys.path.insert(0, str(ROOT_DIR))\n\nfrom src.extensions.kb_extension import rag_search\nfrom src.sql.text2sql import run_text2sql\n\napp = FastAPI(title=\"Mergington High School API\",\n              description=\"API for viewing and signing up for extracurricular activities\")\n\n# Mount the static files directory\ncurrent_dir = Path(__file__).parent\napp.mount(\"/static\", StaticFiles(directory=os.path.join(Path(__file__).parent,\n          \"static\")), name=\"static\")\n\n# In-memory activity database\nactivities = {\n    \"Chess Club\": {\n        \"description\": \"Learn strategies and compete in chess tournaments\",\n        \"schedule\": \"Fridays, 3:30 PM - 5:00 PM\",\n        \"max_participants\": 12,\n        \"participants\": [\"michael@mergington.edu\", \"daniel@mergington.edu\"]\n    },\n    \"Programming Class\": {\n        \"description\": \"Learn programming fundamentals and build software projects\",\n        \"schedule\": \"Tuesdays and Thursdays, 3:30 PM - 4:30 PM\",\n        \"max_participants\": 20,\n        \"participants\": [\"emma@mergington.edu\", \"sophia@mergington.edu\"]\n    },\n    \"Gym Class\": {\n        \"description\": \"Physical education and sports activities\",\n        \"schedule\": \"Mondays, Wednesdays, Fridays, 2:00 PM - 3:00 PM\",\n        \"max_participants\": 30,\n        \"participants\": [\"john@mergington.edu\", \"olivia@mergington.edu\"]\n    }\n}\n\n\n@app.get(\"/\")\ndef root():\n    return RedirectResponse(url=\"/static/index.html\")\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.get(\"/activities\")\ndef get_activities():\n    return activities\n\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.post(\"/activities/{activity_name}/signup\")\ndef signup_for_activity(activity_name: str, email: str):\n    \"\"\"Sign up a student for an activity\"\"\"\n    if activity_name not in activities:\n        raise HTTPException(status_code=404, detail=\"Activity not found\")\n\n    # Get the specific activity\n    activity = activities[activity_name]\n\n    # Add student\n    activity[\"participants\"].append(email)\n    return {\"message\": f\"Signed up {email} for {activity_name}\"}\n\n\ndef jsonify(content: dict, status_code: int = 200):\n    \"\"\"Return a JSON response with the given content and status.\"\"\"\n    return JSONResponse(content=content, status_code=status_code)\n\n\ndef classify_query(question: str) -> str:\n    \"\"\"Classify a question as 'rag', 'text2sql', or 'unknown' using keyword matching.\"\"\"\n    normalized = question.strip().lower()\n    quantitative_keywords = (\n        \"how many\", \"which\", \"list\", \"count\", \"total\", \"how much\", \"how full\"\n    )\n    qualitative_keywords = (\n        \"what\", \"describe\", \"tell me about\", \"how does\", \"explain\"\n    )\n\n    if any(keyword in normalized for keyword in quantitative_keywords):\n        return \"text2sql\"\n    if any(keyword in normalized for keyword in qualitative_keywords):\n        return \"rag\"\n    return \"unknown\"\n\n\n\n\n@app.post(\"/api/ask\")\nasync def ask(request: Request):\n    \"\"\"Handle a question and route it to the appropriate tool based on classification.\"\"\"\n    payload = await request.json()\n    question = payload.get(\"question\") if isinstance(payload, dict) else None\n\n    if not isinstance(question, str) or not question.strip():\n        return jsonify({\"error\": \"question field required\"}, status_code=400)\n\n    route = classify_query(question)\n    if route == \"unknown\":\n        return jsonify(\n            {\n                \"answer\": (\n                    \"I can only answer questions about activities. Try asking what an activity is about, \"\n                    \"or how many students have joined.\"\n                ),\n                \"source\": \"direct\",\n                \"confidence\": 1.0,\n            }\n        )\n\n    try:\n        if route == \"rag\":\n            result = rag_search(question)\n        else:\n            result = run_text2sql(question)\n\n        return jsonify(result)\n    except Exception:\n        return jsonify({\"error\": \"tool error\"}, status_code=500)\n\n\n",
+          "config": {}
+        },
+        "promptId": "7ee4f6f7506813a36794d3700ad3d7178aa2faa36e39c1bb18b9b0dfd99fb05b",
+        "promptIdx": 0,
+        "provider": {
+          "id": "echo",
+          "label": ""
+        },
+        "response": {
+          "output": "",
+          "raw": "",
+          "cost": 0,
+          "cached": false,
+          "tokenUsage": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "numRequests": 1
+          },
+          "isRefusal": false,
+          "metadata": {}
+        },
+        "score": 0,
+        "success": false,
+        "testCase": {
+          "description": "Capstone: classifier function present",
+          "assert": [
+            {
+              "type": "contains",
+              "value": "classify_query"
+            }
+          ],
+          "vars": {},
+          "options": {},
+          "metadata": {}
+        },
+        "testIdx": 8,
+        "tokenUsage": {
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "total": 0,
+          "numRequests": 1,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          },
+          "assertions": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          }
+        },
+        "vars": {},
+        "metadata": {
+          "_promptfooFileMetadata": {}
+        },
+        "failureReason": 1
+      },
+      {
+        "cost": 0,
+        "error": "Expected output to contain \"rag\"",
+        "gradingResult": {
+          "pass": false,
+          "score": 0,
+          "reason": "Expected output to contain \"rag\"",
+          "namedScores": {},
+          "tokensUsed": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 0
+          },
+          "componentResults": [
+            {
+              "pass": false,
+              "score": 0,
+              "reason": "Expected output to contain \"rag\"",
+              "assertion": {
+                "type": "contains",
+                "value": "rag"
+              }
+            }
+          ]
+        },
+        "id": "3b9a43c9-e166-43d5-a601-367ab275c045",
+        "latencyMs": 1,
+        "namedScores": {},
+        "prompt": {
+          "raw": "",
+          "label": "src/app.py: \"\"\"\nHigh School Management System API\n\nA super simple FastAPI application that allows students to view and sign up\nfor extracurricular activities at Mergington High School.\n\"\"\"\n\nfrom fastapi import FastAPI, HTTPException, Request\nfrom fastapi.staticfiles import StaticFiles\nfrom fastapi.responses import JSONResponse, RedirectResponse\nimport os\nimport sys\nfrom pathlib import Path\n\nROOT_DIR = Path(__file__).resolve().parents[1]\nif str(ROOT_DIR) not in sys.path:\n    sys.path.insert(0, str(ROOT_DIR))\n\nfrom src.extensions.kb_extension import rag_search\nfrom src.sql.text2sql import run_text2sql\n\napp = FastAPI(title=\"Mergington High School API\",\n              description=\"API for viewing and signing up for extracurricular activities\")\n\n# Mount the static files directory\ncurrent_dir = Path(__file__).parent\napp.mount(\"/static\", StaticFiles(directory=os.path.join(Path(__file__).parent,\n          \"static\")), name=\"static\")\n\n# In-memory activity database\nactivities = {\n    \"Chess Club\": {\n        \"description\": \"Learn strategies and compete in chess tournaments\",\n        \"schedule\": \"Fridays, 3:30 PM - 5:00 PM\",\n        \"max_participants\": 12,\n        \"participants\": [\"michael@mergington.edu\", \"daniel@mergington.edu\"]\n    },\n    \"Programming Class\": {\n        \"description\": \"Learn programming fundamentals and build software projects\",\n        \"schedule\": \"Tuesdays and Thursdays, 3:30 PM - 4:30 PM\",\n        \"max_participants\": 20,\n        \"participants\": [\"emma@mergington.edu\", \"sophia@mergington.edu\"]\n    },\n    \"Gym Class\": {\n        \"description\": \"Physical education and sports activities\",\n        \"schedule\": \"Mondays, Wednesdays, Fridays, 2:00 PM - 3:00 PM\",\n        \"max_participants\": 30,\n        \"participants\": [\"john@mergington.edu\", \"olivia@mergington.edu\"]\n    }\n}\n\n\n@app.get(\"/\")\ndef root():\n    return RedirectResponse(url=\"/static/index.html\")\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.get(\"/activities\")\ndef get_activities():\n    return activities\n\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.post(\"/activities/{activity_name}/signup\")\ndef signup_for_activity(activity_name: str, email: str):\n    \"\"\"Sign up a student for an activity\"\"\"\n    if activity_name not in activities:\n        raise HTTPException(status_code=404, detail=\"Activity not found\")\n\n    # Get the specific activity\n    activity = activities[activity_name]\n\n    # Add student\n    activity[\"participants\"].append(email)\n    return {\"message\": f\"Signed up {email} for {activity_name}\"}\n\n\ndef jsonify(content: dict, status_code: int = 200):\n    \"\"\"Return a JSON response with the given content and status.\"\"\"\n    return JSONResponse(content=content, status_code=status_code)\n\n\ndef classify_query(question: str) -> str:\n    \"\"\"Classify a question as 'rag', 'text2sql', or 'unknown' using keyword matching.\"\"\"\n    normalized = question.strip().lower()\n    quantitative_keywords = (\n        \"how many\", \"which\", \"list\", \"count\", \"total\", \"how much\", \"how full\"\n    )\n    qualitative_keywords = (\n        \"what\", \"describe\", \"tell me about\", \"how does\", \"explain\"\n    )\n\n    if any(keyword in normalized for keyword in quantitative_keywords):\n        return \"text2sql\"\n    if any(keyword in normalized for keyword in qualitative_keywords):\n        return \"rag\"\n    return \"unknown\"\n\n\n\n\n@app.post(\"/api/ask\")\nasync def ask(request: Request):\n    \"\"\"Handle a question and route it to the appropriate tool based on classification.\"\"\"\n    payload = await request.json()\n    question = payload.get(\"question\") if isinstance(payload, dict) else None\n\n    if not isinstance(question, str) or not question.strip():\n        return jsonify({\"error\": \"question field required\"}, status_code=400)\n\n    route = classify_query(question)\n    if route == \"unknown\":\n        return jsonify(\n            {\n                \"answer\": (\n                    \"I can only answer questions about activities. Try asking what an activity is about, \"\n                    \"or how many students have joined.\"\n                ),\n                \"source\": \"direct\",\n                \"confidence\": 1.0,\n            }\n        )\n\n    try:\n        if route == \"rag\":\n            result = rag_search(question)\n        else:\n            result = run_text2sql(question)\n\n        return jsonify(result)\n    except Exception:\n        return jsonify({\"error\": \"tool error\"}, status_code=500)\n\n\n",
+          "config": {}
+        },
+        "promptId": "7ee4f6f7506813a36794d3700ad3d7178aa2faa36e39c1bb18b9b0dfd99fb05b",
+        "promptIdx": 0,
+        "provider": {
+          "id": "echo",
+          "label": ""
+        },
+        "response": {
+          "output": "",
+          "raw": "",
+          "cost": 0,
+          "cached": false,
+          "tokenUsage": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "numRequests": 1
+          },
+          "isRefusal": false,
+          "metadata": {}
+        },
+        "score": 0,
+        "success": false,
+        "testCase": {
+          "description": "Capstone: RAG routing for qualitative queries",
+          "assert": [
+            {
+              "type": "contains",
+              "value": "rag"
+            }
+          ],
+          "vars": {},
+          "options": {},
+          "metadata": {}
+        },
+        "testIdx": 9,
+        "tokenUsage": {
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "total": 0,
+          "numRequests": 1,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          },
+          "assertions": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          }
+        },
+        "vars": {},
+        "metadata": {
+          "_promptfooFileMetadata": {}
+        },
+        "failureReason": 1
+      },
+      {
+        "cost": 0,
+        "error": "Expected output to contain \"text2sql\"",
+        "gradingResult": {
+          "pass": false,
+          "score": 0,
+          "reason": "Expected output to contain \"text2sql\"",
+          "namedScores": {},
+          "tokensUsed": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 0
+          },
+          "componentResults": [
+            {
+              "pass": false,
+              "score": 0,
+              "reason": "Expected output to contain \"text2sql\"",
+              "assertion": {
+                "type": "contains",
+                "value": "text2sql"
+              }
+            }
+          ]
+        },
+        "id": "18c065bf-3cb3-4966-b333-20927aa462e5",
+        "latencyMs": 3,
+        "namedScores": {},
+        "prompt": {
+          "raw": "",
+          "label": "src/app.py: \"\"\"\nHigh School Management System API\n\nA super simple FastAPI application that allows students to view and sign up\nfor extracurricular activities at Mergington High School.\n\"\"\"\n\nfrom fastapi import FastAPI, HTTPException, Request\nfrom fastapi.staticfiles import StaticFiles\nfrom fastapi.responses import JSONResponse, RedirectResponse\nimport os\nimport sys\nfrom pathlib import Path\n\nROOT_DIR = Path(__file__).resolve().parents[1]\nif str(ROOT_DIR) not in sys.path:\n    sys.path.insert(0, str(ROOT_DIR))\n\nfrom src.extensions.kb_extension import rag_search\nfrom src.sql.text2sql import run_text2sql\n\napp = FastAPI(title=\"Mergington High School API\",\n              description=\"API for viewing and signing up for extracurricular activities\")\n\n# Mount the static files directory\ncurrent_dir = Path(__file__).parent\napp.mount(\"/static\", StaticFiles(directory=os.path.join(Path(__file__).parent,\n          \"static\")), name=\"static\")\n\n# In-memory activity database\nactivities = {\n    \"Chess Club\": {\n        \"description\": \"Learn strategies and compete in chess tournaments\",\n        \"schedule\": \"Fridays, 3:30 PM - 5:00 PM\",\n        \"max_participants\": 12,\n        \"participants\": [\"michael@mergington.edu\", \"daniel@mergington.edu\"]\n    },\n    \"Programming Class\": {\n        \"description\": \"Learn programming fundamentals and build software projects\",\n        \"schedule\": \"Tuesdays and Thursdays, 3:30 PM - 4:30 PM\",\n        \"max_participants\": 20,\n        \"participants\": [\"emma@mergington.edu\", \"sophia@mergington.edu\"]\n    },\n    \"Gym Class\": {\n        \"description\": \"Physical education and sports activities\",\n        \"schedule\": \"Mondays, Wednesdays, Fridays, 2:00 PM - 3:00 PM\",\n        \"max_participants\": 30,\n        \"participants\": [\"john@mergington.edu\", \"olivia@mergington.edu\"]\n    }\n}\n\n\n@app.get(\"/\")\ndef root():\n    return RedirectResponse(url=\"/static/index.html\")\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.get(\"/activities\")\ndef get_activities():\n    return activities\n\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.post(\"/activities/{activity_name}/signup\")\ndef signup_for_activity(activity_name: str, email: str):\n    \"\"\"Sign up a student for an activity\"\"\"\n    if activity_name not in activities:\n        raise HTTPException(status_code=404, detail=\"Activity not found\")\n\n    # Get the specific activity\n    activity = activities[activity_name]\n\n    # Add student\n    activity[\"participants\"].append(email)\n    return {\"message\": f\"Signed up {email} for {activity_name}\"}\n\n\ndef jsonify(content: dict, status_code: int = 200):\n    \"\"\"Return a JSON response with the given content and status.\"\"\"\n    return JSONResponse(content=content, status_code=status_code)\n\n\ndef classify_query(question: str) -> str:\n    \"\"\"Classify a question as 'rag', 'text2sql', or 'unknown' using keyword matching.\"\"\"\n    normalized = question.strip().lower()\n    quantitative_keywords = (\n        \"how many\", \"which\", \"list\", \"count\", \"total\", \"how much\", \"how full\"\n    )\n    qualitative_keywords = (\n        \"what\", \"describe\", \"tell me about\", \"how does\", \"explain\"\n    )\n\n    if any(keyword in normalized for keyword in quantitative_keywords):\n        return \"text2sql\"\n    if any(keyword in normalized for keyword in qualitative_keywords):\n        return \"rag\"\n    return \"unknown\"\n\n\n\n\n@app.post(\"/api/ask\")\nasync def ask(request: Request):\n    \"\"\"Handle a question and route it to the appropriate tool based on classification.\"\"\"\n    payload = await request.json()\n    question = payload.get(\"question\") if isinstance(payload, dict) else None\n\n    if not isinstance(question, str) or not question.strip():\n        return jsonify({\"error\": \"question field required\"}, status_code=400)\n\n    route = classify_query(question)\n    if route == \"unknown\":\n        return jsonify(\n            {\n                \"answer\": (\n                    \"I can only answer questions about activities. Try asking what an activity is about, \"\n                    \"or how many students have joined.\"\n                ),\n                \"source\": \"direct\",\n                \"confidence\": 1.0,\n            }\n        )\n\n    try:\n        if route == \"rag\":\n            result = rag_search(question)\n        else:\n            result = run_text2sql(question)\n\n        return jsonify(result)\n    except Exception:\n        return jsonify({\"error\": \"tool error\"}, status_code=500)\n\n\n",
+          "config": {}
+        },
+        "promptId": "7ee4f6f7506813a36794d3700ad3d7178aa2faa36e39c1bb18b9b0dfd99fb05b",
+        "promptIdx": 0,
+        "provider": {
+          "id": "echo",
+          "label": ""
+        },
+        "response": {
+          "output": "",
+          "raw": "",
+          "cost": 0,
+          "cached": false,
+          "tokenUsage": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "numRequests": 1
+          },
+          "isRefusal": false,
+          "metadata": {}
+        },
+        "score": 0,
+        "success": false,
+        "testCase": {
+          "description": "Capstone: Text2SQL routing for quantitative queries",
+          "assert": [
+            {
+              "type": "contains",
+              "value": "text2sql"
+            }
+          ],
+          "vars": {},
+          "options": {},
+          "metadata": {}
+        },
+        "testIdx": 10,
+        "tokenUsage": {
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "total": 0,
+          "numRequests": 1,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          },
+          "assertions": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          }
+        },
+        "vars": {},
+        "metadata": {
+          "_promptfooFileMetadata": {}
+        },
+        "failureReason": 1
+      },
+      {
+        "cost": 0,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "All assertions passed",
+          "namedScores": {},
+          "tokensUsed": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 0
+          },
+          "componentResults": [
+            {
+              "pass": true,
+              "score": 1,
+              "reason": "Assertion passed",
+              "assertion": {
+                "type": "not-contains",
+                "value": "def get_activities"
+              }
+            }
+          ]
+        },
+        "id": "e8e1cc23-8a99-4cfb-9bfa-071f2b77e491",
+        "latencyMs": 1,
+        "namedScores": {},
+        "prompt": {
+          "raw": "",
+          "label": "src/app.py: \"\"\"\nHigh School Management System API\n\nA super simple FastAPI application that allows students to view and sign up\nfor extracurricular activities at Mergington High School.\n\"\"\"\n\nfrom fastapi import FastAPI, HTTPException, Request\nfrom fastapi.staticfiles import StaticFiles\nfrom fastapi.responses import JSONResponse, RedirectResponse\nimport os\nimport sys\nfrom pathlib import Path\n\nROOT_DIR = Path(__file__).resolve().parents[1]\nif str(ROOT_DIR) not in sys.path:\n    sys.path.insert(0, str(ROOT_DIR))\n\nfrom src.extensions.kb_extension import rag_search\nfrom src.sql.text2sql import run_text2sql\n\napp = FastAPI(title=\"Mergington High School API\",\n              description=\"API for viewing and signing up for extracurricular activities\")\n\n# Mount the static files directory\ncurrent_dir = Path(__file__).parent\napp.mount(\"/static\", StaticFiles(directory=os.path.join(Path(__file__).parent,\n          \"static\")), name=\"static\")\n\n# In-memory activity database\nactivities = {\n    \"Chess Club\": {\n        \"description\": \"Learn strategies and compete in chess tournaments\",\n        \"schedule\": \"Fridays, 3:30 PM - 5:00 PM\",\n        \"max_participants\": 12,\n        \"participants\": [\"michael@mergington.edu\", \"daniel@mergington.edu\"]\n    },\n    \"Programming Class\": {\n        \"description\": \"Learn programming fundamentals and build software projects\",\n        \"schedule\": \"Tuesdays and Thursdays, 3:30 PM - 4:30 PM\",\n        \"max_participants\": 20,\n        \"participants\": [\"emma@mergington.edu\", \"sophia@mergington.edu\"]\n    },\n    \"Gym Class\": {\n        \"description\": \"Physical education and sports activities\",\n        \"schedule\": \"Mondays, Wednesdays, Fridays, 2:00 PM - 3:00 PM\",\n        \"max_participants\": 30,\n        \"participants\": [\"john@mergington.edu\", \"olivia@mergington.edu\"]\n    }\n}\n\n\n@app.get(\"/\")\ndef root():\n    return RedirectResponse(url=\"/static/index.html\")\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.get(\"/activities\")\ndef get_activities():\n    return activities\n\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.post(\"/activities/{activity_name}/signup\")\ndef signup_for_activity(activity_name: str, email: str):\n    \"\"\"Sign up a student for an activity\"\"\"\n    if activity_name not in activities:\n        raise HTTPException(status_code=404, detail=\"Activity not found\")\n\n    # Get the specific activity\n    activity = activities[activity_name]\n\n    # Add student\n    activity[\"participants\"].append(email)\n    return {\"message\": f\"Signed up {email} for {activity_name}\"}\n\n\ndef jsonify(content: dict, status_code: int = 200):\n    \"\"\"Return a JSON response with the given content and status.\"\"\"\n    return JSONResponse(content=content, status_code=status_code)\n\n\ndef classify_query(question: str) -> str:\n    \"\"\"Classify a question as 'rag', 'text2sql', or 'unknown' using keyword matching.\"\"\"\n    normalized = question.strip().lower()\n    quantitative_keywords = (\n        \"how many\", \"which\", \"list\", \"count\", \"total\", \"how much\", \"how full\"\n    )\n    qualitative_keywords = (\n        \"what\", \"describe\", \"tell me about\", \"how does\", \"explain\"\n    )\n\n    if any(keyword in normalized for keyword in quantitative_keywords):\n        return \"text2sql\"\n    if any(keyword in normalized for keyword in qualitative_keywords):\n        return \"rag\"\n    return \"unknown\"\n\n\n\n\n@app.post(\"/api/ask\")\nasync def ask(request: Request):\n    \"\"\"Handle a question and route it to the appropriate tool based on classification.\"\"\"\n    payload = await request.json()\n    question = payload.get(\"question\") if isinstance(payload, dict) else None\n\n    if not isinstance(question, str) or not question.strip():\n        return jsonify({\"error\": \"question field required\"}, status_code=400)\n\n    route = classify_query(question)\n    if route == \"unknown\":\n        return jsonify(\n            {\n                \"answer\": (\n                    \"I can only answer questions about activities. Try asking what an activity is about, \"\n                    \"or how many students have joined.\"\n                ),\n                \"source\": \"direct\",\n                \"confidence\": 1.0,\n            }\n        )\n\n    try:\n        if route == \"rag\":\n            result = rag_search(question)\n        else:\n            result = run_text2sql(question)\n\n        return jsonify(result)\n    except Exception:\n        return jsonify({\"error\": \"tool error\"}, status_code=500)\n\n\n",
+          "config": {}
+        },
+        "promptId": "7ee4f6f7506813a36794d3700ad3d7178aa2faa36e39c1bb18b9b0dfd99fb05b",
+        "promptIdx": 0,
+        "provider": {
+          "id": "echo",
+          "label": ""
+        },
+        "response": {
+          "output": "",
+          "raw": "",
+          "cost": 0,
+          "cached": false,
+          "tokenUsage": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "numRequests": 1
+          },
+          "isRefusal": false,
+          "metadata": {}
+        },
+        "score": 1,
+        "success": true,
+        "testCase": {
+          "description": "Capstone: does NOT modify get_activities — UAT-locked",
+          "assert": [
+            {
+              "type": "not-contains",
+              "value": "def get_activities"
+            }
+          ],
+          "vars": {},
+          "options": {},
+          "metadata": {}
+        },
+        "testIdx": 11,
+        "tokenUsage": {
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "total": 0,
+          "numRequests": 1,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          },
+          "assertions": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          }
+        },
+        "vars": {},
+        "metadata": {
+          "_promptfooFileMetadata": {}
+        },
+        "failureReason": 0
+      },
+      {
+        "cost": 0,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "All assertions passed",
+          "namedScores": {},
+          "tokensUsed": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 0
+          },
+          "componentResults": [
+            {
+              "pass": true,
+              "score": 1,
+              "reason": "Assertion passed",
+              "assertion": {
+                "type": "not-contains",
+                "value": "def signup"
+              }
+            }
+          ]
+        },
+        "id": "20d6ec73-954b-4a7f-8efa-b6c8aaf8d7cf",
+        "latencyMs": 1,
+        "namedScores": {},
+        "prompt": {
+          "raw": "",
+          "label": "src/app.py: \"\"\"\nHigh School Management System API\n\nA super simple FastAPI application that allows students to view and sign up\nfor extracurricular activities at Mergington High School.\n\"\"\"\n\nfrom fastapi import FastAPI, HTTPException, Request\nfrom fastapi.staticfiles import StaticFiles\nfrom fastapi.responses import JSONResponse, RedirectResponse\nimport os\nimport sys\nfrom pathlib import Path\n\nROOT_DIR = Path(__file__).resolve().parents[1]\nif str(ROOT_DIR) not in sys.path:\n    sys.path.insert(0, str(ROOT_DIR))\n\nfrom src.extensions.kb_extension import rag_search\nfrom src.sql.text2sql import run_text2sql\n\napp = FastAPI(title=\"Mergington High School API\",\n              description=\"API for viewing and signing up for extracurricular activities\")\n\n# Mount the static files directory\ncurrent_dir = Path(__file__).parent\napp.mount(\"/static\", StaticFiles(directory=os.path.join(Path(__file__).parent,\n          \"static\")), name=\"static\")\n\n# In-memory activity database\nactivities = {\n    \"Chess Club\": {\n        \"description\": \"Learn strategies and compete in chess tournaments\",\n        \"schedule\": \"Fridays, 3:30 PM - 5:00 PM\",\n        \"max_participants\": 12,\n        \"participants\": [\"michael@mergington.edu\", \"daniel@mergington.edu\"]\n    },\n    \"Programming Class\": {\n        \"description\": \"Learn programming fundamentals and build software projects\",\n        \"schedule\": \"Tuesdays and Thursdays, 3:30 PM - 4:30 PM\",\n        \"max_participants\": 20,\n        \"participants\": [\"emma@mergington.edu\", \"sophia@mergington.edu\"]\n    },\n    \"Gym Class\": {\n        \"description\": \"Physical education and sports activities\",\n        \"schedule\": \"Mondays, Wednesdays, Fridays, 2:00 PM - 3:00 PM\",\n        \"max_participants\": 30,\n        \"participants\": [\"john@mergington.edu\", \"olivia@mergington.edu\"]\n    }\n}\n\n\n@app.get(\"/\")\ndef root():\n    return RedirectResponse(url=\"/static/index.html\")\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.get(\"/activities\")\ndef get_activities():\n    return activities\n\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.post(\"/activities/{activity_name}/signup\")\ndef signup_for_activity(activity_name: str, email: str):\n    \"\"\"Sign up a student for an activity\"\"\"\n    if activity_name not in activities:\n        raise HTTPException(status_code=404, detail=\"Activity not found\")\n\n    # Get the specific activity\n    activity = activities[activity_name]\n\n    # Add student\n    activity[\"participants\"].append(email)\n    return {\"message\": f\"Signed up {email} for {activity_name}\"}\n\n\ndef jsonify(content: dict, status_code: int = 200):\n    \"\"\"Return a JSON response with the given content and status.\"\"\"\n    return JSONResponse(content=content, status_code=status_code)\n\n\ndef classify_query(question: str) -> str:\n    \"\"\"Classify a question as 'rag', 'text2sql', or 'unknown' using keyword matching.\"\"\"\n    normalized = question.strip().lower()\n    quantitative_keywords = (\n        \"how many\", \"which\", \"list\", \"count\", \"total\", \"how much\", \"how full\"\n    )\n    qualitative_keywords = (\n        \"what\", \"describe\", \"tell me about\", \"how does\", \"explain\"\n    )\n\n    if any(keyword in normalized for keyword in quantitative_keywords):\n        return \"text2sql\"\n    if any(keyword in normalized for keyword in qualitative_keywords):\n        return \"rag\"\n    return \"unknown\"\n\n\n\n\n@app.post(\"/api/ask\")\nasync def ask(request: Request):\n    \"\"\"Handle a question and route it to the appropriate tool based on classification.\"\"\"\n    payload = await request.json()\n    question = payload.get(\"question\") if isinstance(payload, dict) else None\n\n    if not isinstance(question, str) or not question.strip():\n        return jsonify({\"error\": \"question field required\"}, status_code=400)\n\n    route = classify_query(question)\n    if route == \"unknown\":\n        return jsonify(\n            {\n                \"answer\": (\n                    \"I can only answer questions about activities. Try asking what an activity is about, \"\n                    \"or how many students have joined.\"\n                ),\n                \"source\": \"direct\",\n                \"confidence\": 1.0,\n            }\n        )\n\n    try:\n        if route == \"rag\":\n            result = rag_search(question)\n        else:\n            result = run_text2sql(question)\n\n        return jsonify(result)\n    except Exception:\n        return jsonify({\"error\": \"tool error\"}, status_code=500)\n\n\n",
+          "config": {}
+        },
+        "promptId": "7ee4f6f7506813a36794d3700ad3d7178aa2faa36e39c1bb18b9b0dfd99fb05b",
+        "promptIdx": 0,
+        "provider": {
+          "id": "echo",
+          "label": ""
+        },
+        "response": {
+          "output": "",
+          "raw": "",
+          "cost": 0,
+          "cached": false,
+          "tokenUsage": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "numRequests": 1
+          },
+          "isRefusal": false,
+          "metadata": {}
+        },
+        "score": 1,
+        "success": true,
+        "testCase": {
+          "description": "Capstone: does NOT modify signup — UAT-locked",
+          "assert": [
+            {
+              "type": "not-contains",
+              "value": "def signup"
+            }
+          ],
+          "vars": {},
+          "options": {},
+          "metadata": {}
+        },
+        "testIdx": 12,
+        "tokenUsage": {
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "total": 0,
+          "numRequests": 1,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          },
+          "assertions": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          }
+        },
+        "vars": {},
+        "metadata": {
+          "_promptfooFileMetadata": {}
+        },
+        "failureReason": 0
+      },
+      {
+        "cost": 0,
+        "error": "Expected output to contain \"\"source\"\"",
+        "gradingResult": {
+          "pass": false,
+          "score": 0,
+          "reason": "Expected output to contain \"\"source\"\"",
+          "namedScores": {},
+          "tokensUsed": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 0
+          },
+          "componentResults": [
+            {
+              "pass": false,
+              "score": 0,
+              "reason": "Expected output to contain \"\"source\"\"",
+              "assertion": {
+                "type": "contains",
+                "value": "\"source\""
+              }
+            }
+          ]
+        },
+        "id": "9e47cd84-c06e-4867-8205-25157f15bc8e",
+        "latencyMs": 1,
+        "namedScores": {},
+        "prompt": {
+          "raw": "",
+          "label": "src/app.py: \"\"\"\nHigh School Management System API\n\nA super simple FastAPI application that allows students to view and sign up\nfor extracurricular activities at Mergington High School.\n\"\"\"\n\nfrom fastapi import FastAPI, HTTPException, Request\nfrom fastapi.staticfiles import StaticFiles\nfrom fastapi.responses import JSONResponse, RedirectResponse\nimport os\nimport sys\nfrom pathlib import Path\n\nROOT_DIR = Path(__file__).resolve().parents[1]\nif str(ROOT_DIR) not in sys.path:\n    sys.path.insert(0, str(ROOT_DIR))\n\nfrom src.extensions.kb_extension import rag_search\nfrom src.sql.text2sql import run_text2sql\n\napp = FastAPI(title=\"Mergington High School API\",\n              description=\"API for viewing and signing up for extracurricular activities\")\n\n# Mount the static files directory\ncurrent_dir = Path(__file__).parent\napp.mount(\"/static\", StaticFiles(directory=os.path.join(Path(__file__).parent,\n          \"static\")), name=\"static\")\n\n# In-memory activity database\nactivities = {\n    \"Chess Club\": {\n        \"description\": \"Learn strategies and compete in chess tournaments\",\n        \"schedule\": \"Fridays, 3:30 PM - 5:00 PM\",\n        \"max_participants\": 12,\n        \"participants\": [\"michael@mergington.edu\", \"daniel@mergington.edu\"]\n    },\n    \"Programming Class\": {\n        \"description\": \"Learn programming fundamentals and build software projects\",\n        \"schedule\": \"Tuesdays and Thursdays, 3:30 PM - 4:30 PM\",\n        \"max_participants\": 20,\n        \"participants\": [\"emma@mergington.edu\", \"sophia@mergington.edu\"]\n    },\n    \"Gym Class\": {\n        \"description\": \"Physical education and sports activities\",\n        \"schedule\": \"Mondays, Wednesdays, Fridays, 2:00 PM - 3:00 PM\",\n        \"max_participants\": 30,\n        \"participants\": [\"john@mergington.edu\", \"olivia@mergington.edu\"]\n    }\n}\n\n\n@app.get(\"/\")\ndef root():\n    return RedirectResponse(url=\"/static/index.html\")\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.get(\"/activities\")\ndef get_activities():\n    return activities\n\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.post(\"/activities/{activity_name}/signup\")\ndef signup_for_activity(activity_name: str, email: str):\n    \"\"\"Sign up a student for an activity\"\"\"\n    if activity_name not in activities:\n        raise HTTPException(status_code=404, detail=\"Activity not found\")\n\n    # Get the specific activity\n    activity = activities[activity_name]\n\n    # Add student\n    activity[\"participants\"].append(email)\n    return {\"message\": f\"Signed up {email} for {activity_name}\"}\n\n\ndef jsonify(content: dict, status_code: int = 200):\n    \"\"\"Return a JSON response with the given content and status.\"\"\"\n    return JSONResponse(content=content, status_code=status_code)\n\n\ndef classify_query(question: str) -> str:\n    \"\"\"Classify a question as 'rag', 'text2sql', or 'unknown' using keyword matching.\"\"\"\n    normalized = question.strip().lower()\n    quantitative_keywords = (\n        \"how many\", \"which\", \"list\", \"count\", \"total\", \"how much\", \"how full\"\n    )\n    qualitative_keywords = (\n        \"what\", \"describe\", \"tell me about\", \"how does\", \"explain\"\n    )\n\n    if any(keyword in normalized for keyword in quantitative_keywords):\n        return \"text2sql\"\n    if any(keyword in normalized for keyword in qualitative_keywords):\n        return \"rag\"\n    return \"unknown\"\n\n\n\n\n@app.post(\"/api/ask\")\nasync def ask(request: Request):\n    \"\"\"Handle a question and route it to the appropriate tool based on classification.\"\"\"\n    payload = await request.json()\n    question = payload.get(\"question\") if isinstance(payload, dict) else None\n\n    if not isinstance(question, str) or not question.strip():\n        return jsonify({\"error\": \"question field required\"}, status_code=400)\n\n    route = classify_query(question)\n    if route == \"unknown\":\n        return jsonify(\n            {\n                \"answer\": (\n                    \"I can only answer questions about activities. Try asking what an activity is about, \"\n                    \"or how many students have joined.\"\n                ),\n                \"source\": \"direct\",\n                \"confidence\": 1.0,\n            }\n        )\n\n    try:\n        if route == \"rag\":\n            result = rag_search(question)\n        else:\n            result = run_text2sql(question)\n\n        return jsonify(result)\n    except Exception:\n        return jsonify({\"error\": \"tool error\"}, status_code=500)\n\n\n",
+          "config": {}
+        },
+        "promptId": "7ee4f6f7506813a36794d3700ad3d7178aa2faa36e39c1bb18b9b0dfd99fb05b",
+        "promptIdx": 0,
+        "provider": {
+          "id": "echo",
+          "label": ""
+        },
+        "response": {
+          "output": "",
+          "raw": "",
+          "cost": 0,
+          "cached": false,
+          "tokenUsage": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "numRequests": 1
+          },
+          "isRefusal": false,
+          "metadata": {}
+        },
+        "score": 0,
+        "success": false,
+        "testCase": {
+          "description": "Capstone: returns source field in response",
+          "assert": [
+            {
+              "type": "contains",
+              "value": "\"source\""
+            }
+          ],
+          "vars": {},
+          "options": {},
+          "metadata": {}
+        },
+        "testIdx": 13,
+        "tokenUsage": {
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "total": 0,
+          "numRequests": 1,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          },
+          "assertions": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          }
+        },
+        "vars": {},
+        "metadata": {
+          "_promptfooFileMetadata": {}
+        },
+        "failureReason": 1
+      },
+      {
+        "cost": 0,
+        "error": "Expected output to contain \"400\"",
+        "gradingResult": {
+          "pass": false,
+          "score": 0,
+          "reason": "Expected output to contain \"400\"",
+          "namedScores": {},
+          "tokensUsed": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 0
+          },
+          "componentResults": [
+            {
+              "pass": false,
+              "score": 0,
+              "reason": "Expected output to contain \"400\"",
+              "assertion": {
+                "type": "contains",
+                "value": "400"
+              }
+            }
+          ]
+        },
+        "id": "0f76001c-8177-49b1-ba0b-6a3e9fefeb9a",
+        "latencyMs": 0,
+        "namedScores": {},
+        "prompt": {
+          "raw": "",
+          "label": "src/app.py: \"\"\"\nHigh School Management System API\n\nA super simple FastAPI application that allows students to view and sign up\nfor extracurricular activities at Mergington High School.\n\"\"\"\n\nfrom fastapi import FastAPI, HTTPException, Request\nfrom fastapi.staticfiles import StaticFiles\nfrom fastapi.responses import JSONResponse, RedirectResponse\nimport os\nimport sys\nfrom pathlib import Path\n\nROOT_DIR = Path(__file__).resolve().parents[1]\nif str(ROOT_DIR) not in sys.path:\n    sys.path.insert(0, str(ROOT_DIR))\n\nfrom src.extensions.kb_extension import rag_search\nfrom src.sql.text2sql import run_text2sql\n\napp = FastAPI(title=\"Mergington High School API\",\n              description=\"API for viewing and signing up for extracurricular activities\")\n\n# Mount the static files directory\ncurrent_dir = Path(__file__).parent\napp.mount(\"/static\", StaticFiles(directory=os.path.join(Path(__file__).parent,\n          \"static\")), name=\"static\")\n\n# In-memory activity database\nactivities = {\n    \"Chess Club\": {\n        \"description\": \"Learn strategies and compete in chess tournaments\",\n        \"schedule\": \"Fridays, 3:30 PM - 5:00 PM\",\n        \"max_participants\": 12,\n        \"participants\": [\"michael@mergington.edu\", \"daniel@mergington.edu\"]\n    },\n    \"Programming Class\": {\n        \"description\": \"Learn programming fundamentals and build software projects\",\n        \"schedule\": \"Tuesdays and Thursdays, 3:30 PM - 4:30 PM\",\n        \"max_participants\": 20,\n        \"participants\": [\"emma@mergington.edu\", \"sophia@mergington.edu\"]\n    },\n    \"Gym Class\": {\n        \"description\": \"Physical education and sports activities\",\n        \"schedule\": \"Mondays, Wednesdays, Fridays, 2:00 PM - 3:00 PM\",\n        \"max_participants\": 30,\n        \"participants\": [\"john@mergington.edu\", \"olivia@mergington.edu\"]\n    }\n}\n\n\n@app.get(\"/\")\ndef root():\n    return RedirectResponse(url=\"/static/index.html\")\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.get(\"/activities\")\ndef get_activities():\n    return activities\n\n\n# ============================================================\n# UAT-LOCKED: This route has passed UAT. DO NOT MODIFY.\n# ============================================================\n@app.post(\"/activities/{activity_name}/signup\")\ndef signup_for_activity(activity_name: str, email: str):\n    \"\"\"Sign up a student for an activity\"\"\"\n    if activity_name not in activities:\n        raise HTTPException(status_code=404, detail=\"Activity not found\")\n\n    # Get the specific activity\n    activity = activities[activity_name]\n\n    # Add student\n    activity[\"participants\"].append(email)\n    return {\"message\": f\"Signed up {email} for {activity_name}\"}\n\n\ndef jsonify(content: dict, status_code: int = 200):\n    \"\"\"Return a JSON response with the given content and status.\"\"\"\n    return JSONResponse(content=content, status_code=status_code)\n\n\ndef classify_query(question: str) -> str:\n    \"\"\"Classify a question as 'rag', 'text2sql', or 'unknown' using keyword matching.\"\"\"\n    normalized = question.strip().lower()\n    quantitative_keywords = (\n        \"how many\", \"which\", \"list\", \"count\", \"total\", \"how much\", \"how full\"\n    )\n    qualitative_keywords = (\n        \"what\", \"describe\", \"tell me about\", \"how does\", \"explain\"\n    )\n\n    if any(keyword in normalized for keyword in quantitative_keywords):\n        return \"text2sql\"\n    if any(keyword in normalized for keyword in qualitative_keywords):\n        return \"rag\"\n    return \"unknown\"\n\n\n\n\n@app.post(\"/api/ask\")\nasync def ask(request: Request):\n    \"\"\"Handle a question and route it to the appropriate tool based on classification.\"\"\"\n    payload = await request.json()\n    question = payload.get(\"question\") if isinstance(payload, dict) else None\n\n    if not isinstance(question, str) or not question.strip():\n        return jsonify({\"error\": \"question field required\"}, status_code=400)\n\n    route = classify_query(question)\n    if route == \"unknown\":\n        return jsonify(\n            {\n                \"answer\": (\n                    \"I can only answer questions about activities. Try asking what an activity is about, \"\n                    \"or how many students have joined.\"\n                ),\n                \"source\": \"direct\",\n                \"confidence\": 1.0,\n            }\n        )\n\n    try:\n        if route == \"rag\":\n            result = rag_search(question)\n        else:\n            result = run_text2sql(question)\n\n        return jsonify(result)\n    except Exception:\n        return jsonify({\"error\": \"tool error\"}, status_code=500)\n\n\n",
+          "config": {}
+        },
+        "promptId": "7ee4f6f7506813a36794d3700ad3d7178aa2faa36e39c1bb18b9b0dfd99fb05b",
+        "promptIdx": 0,
+        "provider": {
+          "id": "echo",
+          "label": ""
+        },
+        "response": {
+          "output": "",
+          "raw": "",
+          "cost": 0,
+          "cached": false,
+          "tokenUsage": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "numRequests": 1
+          },
+          "isRefusal": false,
+          "metadata": {}
+        },
+        "score": 0,
+        "success": false,
+        "testCase": {
+          "description": "Capstone: handles 400 for missing question field",
+          "assert": [
+            {
+              "type": "contains",
+              "value": "400"
+            }
+          ],
+          "vars": {},
+          "options": {},
+          "metadata": {}
+        },
+        "testIdx": 14,
+        "tokenUsage": {
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "total": 0,
+          "numRequests": 1,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          },
+          "assertions": {
+            "total": 0,
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          }
+        },
+        "vars": {},
+        "metadata": {
+          "_promptfooFileMetadata": {}
+        },
+        "failureReason": 1
+      }
+    ],
+    "stats": {
+      "successes": 4,
+      "failures": 11,
+      "errors": 0,
+      "tokenUsage": {
+        "prompt": 0,
+        "completion": 0,
+        "cached": 0,
+        "total": 0,
+        "numRequests": 15,
+        "completionDetails": {
+          "reasoning": 0,
+          "acceptedPrediction": 0,
+          "rejectedPrediction": 0,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0
+        },
+        "assertions": {
+          "total": 0,
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "numRequests": 0,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          }
+        }
+      },
+      "durationMs": 6087,
+      "evaluationDurationMs": 6087
+    }
+  },
+  "config": {
+    "prompts": [
+      "file://src/app.py"
+    ],
+    "providers": [
+      {
+        "id": "echo"
+      }
+    ],
+    "tests": [
+      {
+        "description": "Output contains the correct function name",
+        "assert": [
+          {
+            "type": "contains",
+            "value": "def get_activity"
+          }
+        ]
+      },
+      {
+        "description": "Output does NOT contain modification of get_activities",
+        "assert": [
+          {
+            "type": "not-contains",
+            "value": "def get_activities"
+          }
+        ]
+      },
+      {
+        "description": "Output does NOT include the existing signup route",
+        "assert": [
+          {
+            "type": "not-contains",
+            "value": "def signup_for_activity"
+          }
+        ]
+      },
+      {
+        "description": "Output uses jsonify",
+        "assert": [
+          {
+            "type": "contains",
+            "value": "jsonify"
+          }
+        ]
+      },
+      {
+        "description": "Output uses 404 status for not found",
+        "assert": [
+          {
+            "type": "contains",
+            "value": "status_code=404"
+          }
+        ]
+      },
+      {
+        "description": "Capstone: ask endpoint has correct function name",
+        "assert": [
+          {
+            "type": "contains",
+            "value": "def ask"
+          }
+        ]
+      },
+      {
+        "description": "Capstone: ask endpoint uses correct route",
+        "assert": [
+          {
+            "type": "contains",
+            "value": "/api/ask"
+          }
+        ]
+      },
+      {
+        "description": "Capstone: endpoint accepts POST method",
+        "assert": [
+          {
+            "type": "contains",
+            "value": "POST"
+          }
+        ]
+      },
+      {
+        "description": "Capstone: classifier function present",
+        "assert": [
+          {
+            "type": "contains",
+            "value": "classify_query"
+          }
+        ]
+      },
+      {
+        "description": "Capstone: RAG routing for qualitative queries",
+        "assert": [
+          {
+            "type": "contains",
+            "value": "rag"
+          }
+        ]
+      },
+      {
+        "description": "Capstone: Text2SQL routing for quantitative queries",
+        "assert": [
+          {
+            "type": "contains",
+            "value": "text2sql"
+          }
+        ]
+      },
+      {
+        "description": "Capstone: does NOT modify get_activities — UAT-locked",
+        "assert": [
+          {
+            "type": "not-contains",
+            "value": "def get_activities"
+          }
+        ]
+      },
+      {
+        "description": "Capstone: does NOT modify signup — UAT-locked",
+        "assert": [
+          {
+            "type": "not-contains",
+            "value": "def signup"
+          }
+        ]
+      },
+      {
+        "description": "Capstone: returns source field in response",
+        "assert": [
+          {
+            "type": "contains",
+            "value": "\"source\""
+          }
+        ]
+      },
+      {
+        "description": "Capstone: handles 400 for missing question field",
+        "assert": [
+          {
+            "type": "contains",
+            "value": "400"
+          }
+        ]
+      }
+    ],
+    "outputPath": [
+      "results.json"
+    ],
+    "extensions": []
+  },
+  "shareableUrl": null,
+  "metadata": {
+    "promptfooVersion": "0.121.17",
+    "nodeVersion": "v20.20.2",
+    "platform": "linux",
+    "arch": "x64",
+    "exportedAt": "2026-06-22T04:28:08.269Z",
+    "evaluationCreatedAt": "2026-06-22T04:28:02.061Z"
+  },
+  "runtimeOptions": {
+    "eventSource": "cli",
+    "showProgressBar": true,
+    "repeat": 1,
+    "maxConcurrency": 4,
+    "cache": true
+  }
+}
