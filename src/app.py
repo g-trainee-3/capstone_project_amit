@@ -5,9 +5,9 @@ A super simple FastAPI application that allows students to view and sign up
 for extracurricular activities at Mergington High School.
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 import os
 from pathlib import Path
 
@@ -69,5 +69,92 @@ def signup_for_activity(activity_name: str, email: str):
     # Add student
     activity["participants"].append(email)
     return {"message": f"Signed up {email} for {activity_name}"}
+
+
+def jsonify(content: dict, status_code: int = 200):
+    """Return a JSON response with the given content and status."""
+    return JSONResponse(content=content, status_code=status_code)
+
+
+def classify_query(question: str) -> str:
+    """Classify a question as 'rag', 'text2sql', or 'unknown' using keyword matching."""
+    normalized = question.strip().lower()
+    quantitative_keywords = (
+        "how many", "which", "list", "count", "total", "how much", "how full"
+    )
+    qualitative_keywords = (
+        "what", "describe", "tell me about", "how does", "explain"
+    )
+
+    if any(keyword in normalized for keyword in quantitative_keywords):
+        return "text2sql"
+    if any(keyword in normalized for keyword in qualitative_keywords):
+        return "rag"
+    return "unknown"
+
+
+def rag_search(question: str) -> dict:
+    """Simulate a retrieval-augmented generation search over activity information."""
+    normalized = question.lower()
+    if "chess" in normalized:
+        answer = "Chess Club is a strategy-focused club with tournaments on Fridays."
+    elif "programming" in normalized or "program" in normalized:
+        answer = "Programming Class teaches programming fundamentals and software projects."
+    elif "gym" in normalized or "physical" in normalized:
+        answer = "Gym Class focuses on physical education and sports activities."
+    else:
+        answer = (
+            "I can answer questions about activities, including their descriptions and schedules."
+        )
+
+    return {"answer": answer, "source": "rag", "confidence": 0.8}
+
+
+def run_text2sql(question: str) -> dict:
+    """Simulate a Text2SQL query against the activity database."""
+    normalized = question.lower()
+    if any(keyword in normalized for keyword in ("how many", "count", "total", "how full")):
+        total_participants = sum(len(activity["participants"]) for activity in activities.values())
+        answer = f"There are {total_participants} students signed up across all activities."
+    elif any(keyword in normalized for keyword in ("which", "list")):
+        activity_names = ", ".join(activities.keys())
+        answer = f"The activities are: {activity_names}."
+    else:
+        answer = "I found activity information from the database."
+
+    return {"answer": answer, "source": "text2sql", "confidence": 0.8}
+
+
+@app.post("/api/ask")
+async def ask(request: Request):
+    """Handle a question and route it to the appropriate tool based on classification."""
+    payload = await request.json()
+    question = payload.get("question") if isinstance(payload, dict) else None
+
+    if not isinstance(question, str) or not question.strip():
+        return jsonify({"error": "question field required"}, status_code=400)
+
+    route = classify_query(question)
+    if route == "unknown":
+        return jsonify(
+            {
+                "answer": (
+                    "I can only answer questions about activities. Try asking what an activity is about, "
+                    "or how many students have joined."
+                ),
+                "source": "direct",
+                "confidence": 1.0,
+            }
+        )
+
+    try:
+        if route == "rag":
+            result = rag_search(question)
+        else:
+            result = run_text2sql(question)
+
+        return jsonify(result)
+    except Exception:
+        return jsonify({"error": "tool error"}, status_code=500)
 
 
