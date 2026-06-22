@@ -291,7 +291,7 @@ def _format_participants(value: Any) -> str:
 def run_text2sql(question: str) -> Dict[str, Any]:
     """Run a Text2SQL question against PostgreSQL and return a formatted answer."""
     if not isinstance(question, str) or not question.strip():
-        return {"error": "question is required"}
+        return {"error": "question is required", "source": "text2sql", "confidence": 0.0}
 
     sql, params = _generate_sql(question)
     if not security_validate(sql):
@@ -299,8 +299,12 @@ def run_text2sql(question: str) -> Dict[str, Any]:
 
     try:
         conn = _get_db_connection()
-    except Exception as exc:
-        return {"error": str(exc)}
+    except Exception:
+        return {
+            "answer": "I could not run the database query because the PostgreSQL client is not available.",
+            "source": "text2sql",
+            "confidence": 0.0,
+        }
 
     cursor = None
     try:
@@ -309,8 +313,12 @@ def run_text2sql(question: str) -> Dict[str, Any]:
         rows = cursor.fetchall()
         answer = _format_rows(rows, cursor.description, question)
         return {"answer": answer, "source": "text2sql", "confidence": 1.0}
-    except Exception as exc:
-        return {"error": f"Query execution failed: {exc}"}
+    except Exception:
+        return {
+            "answer": "An error occurred while executing the database query.",
+            "source": "text2sql",
+            "confidence": 0.0,
+        }
     finally:
         if cursor is not None:
             try:

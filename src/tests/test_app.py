@@ -61,3 +61,44 @@ def test_root_redirects():
     response = client.get("/", follow_redirects=False)
     assert response.status_code in (302, 307)
     assert "/static/index.html" in response.headers["location"]
+
+
+def test_ask_qualitative_question_returns_rag():
+    response = client.post("/api/ask", json={"question": "Tell me about Chess Club"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["source"] == "rag"
+    assert "answer" in data
+    assert "confidence" in data
+
+
+def test_ask_quantitative_question_returns_text2sql():
+    response = client.post("/api/ask", json={"question": "How many students in Swimming?"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["source"] == "text2sql"
+    assert "answer" in data
+    assert "confidence" in data
+
+
+def test_ask_unknown_question_returns_direct():
+    response = client.post("/api/ask", json={"question": "Can you tell me the time?"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["source"] == "direct"
+    assert "answer" in data
+    assert "confidence" in data
+
+
+def test_ask_missing_question_field_returns_400():
+    response = client.post("/api/ask", json={})
+    assert response.status_code == 400
+    data = response.json()
+    assert "error" in data
+
+
+def test_ask_empty_question_string_returns_400():
+    response = client.post("/api/ask", json={"question": ""})
+    assert response.status_code == 400
+    data = response.json()
+    assert "error" in data

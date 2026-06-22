@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ask About Activities</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f4f7fb;
+      color: #1f2937;
+    }
+
+    .container {
+      width: min(600px, calc(100% - 32px));
+      padding: 24px;
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
+      border: 1px solid #e5e7eb;
+    }
+
+    h1 {
+      margin: 0 0 16px;
+      font-size: 1.75rem;
+      color: #111827;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    input[type="text"]:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+    }
+
+    button {
+      margin-top: 16px;
+      padding: 12px 18px;
+      border: none;
+      border-radius: 10px;
+      background: #4f46e5;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background: #a5b4fc;
+      cursor: not-allowed;
+    }
+
+    .result-card {
+      margin-top: 24px;
+      padding: 18px;
+      border-radius: 14px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+    }
+
+    .result-message {
+      margin: 0 0 12px;
+      line-height: 1.6;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 0.95rem;
+      color: #4b5563;
+    }
+
+    .meta span {
+      background: #eef2ff;
+      padding: 8px 12px;
+      border-radius: 9999px;
+    }
+
+    .error {
+      margin-top: 24px;
+      padding: 16px;
+      border-radius: 14px;
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1>Ask About Our Activities</h1>
+    <form id="ask-form">
+      <label for="question-input">Ask about our activities</label>
+      <input id="question-input" type="text" placeholder="e.g. What is Chess Club about?" autocomplete="off" />
+      <button id="submit-button" type="submit">Submit</button>
+    </form>
+
+    <section id="result" class="result-card" hidden>
+      <p id="answer" class="result-message"></p>
+      <div id="meta" class="meta"></div>
+    </section>
+
+    <div id="error" class="error" role="alert" hidden></div>
+  </main>
+
+  <script>
+    const form = document.getElementById('ask-form');
+    const input = document.getElementById('question-input');
+    const button = document.getElementById('submit-button');
+    const resultSection = document.getElementById('result');
+    const answerEl = document.getElementById('answer');
+    const metaEl = document.getElementById('meta');
+    const errorEl = document.getElementById('error');
+
+    function showError(message) {
+      errorEl.textContent = message;
+      errorEl.hidden = false;
+      resultSection.hidden = true;
+    }
+
+    function clearError() {
+      errorEl.textContent = '';
+      errorEl.hidden = true;
+    }
+
+    function getSourceLabel(source) {
+      if (source === 'rag') return 'Answered from knowledge base';
+      if (source === 'text2sql') return 'Answered from database';
+      return 'Direct answer';
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      clearError();
+
+      const question = input.value.trim();
+      if (!question) {
+        showError('Please enter a question before submitting.');
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = 'Asking...';
+
+      try {
+        const response = await fetch('/api/ask', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ question })
+        });
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null);
+          const message = payload && payload.error ? payload.error : 'Unable to reach the AI service.';
+          throw new Error(message);
+        }
+
+        const data = await response.json();
+        answerEl.textContent = data.answer || 'No answer returned.';
+        metaEl.innerHTML = '';
+
+        const sourceLabel = getSourceLabel(data.source);
+        const sourceTag = document.createElement('span');
+        sourceTag.textContent = sourceLabel;
+        metaEl.appendChild(sourceTag);
+
+        if (typeof data.confidence === 'number' && data.confidence > 0.5) {
+          const confidenceTag = document.createElement('span');
+          confidenceTag.textContent = `Confidence: ${(data.confidence * 100).toFixed(0)}%`;
+          metaEl.appendChild(confidenceTag);
+        }
+
+        resultSection.hidden = false;
+      } catch (err) {
+        showError(`There was a problem asking your question. ${err.message}`);
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Submit';
+      }
+    });
+  </script>
+</body>
+</html>
