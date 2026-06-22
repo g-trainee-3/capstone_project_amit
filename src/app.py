@@ -11,6 +11,9 @@ from fastapi.responses import JSONResponse, RedirectResponse
 import os
 from pathlib import Path
 
+from src.extensions.kb_extension import rag_search
+from src.sql.text2sql import run_text2sql
+
 app = FastAPI(title="Mergington High School API",
               description="API for viewing and signing up for extracurricular activities")
 
@@ -93,36 +96,6 @@ def classify_query(question: str) -> str:
     return "unknown"
 
 
-def rag_search(question: str) -> dict:
-    """Simulate a retrieval-augmented generation search over activity information."""
-    normalized = question.lower()
-    if "chess" in normalized:
-        answer = "Chess Club is a strategy-focused club with tournaments on Fridays."
-    elif "programming" in normalized or "program" in normalized:
-        answer = "Programming Class teaches programming fundamentals and software projects."
-    elif "gym" in normalized or "physical" in normalized:
-        answer = "Gym Class focuses on physical education and sports activities."
-    else:
-        answer = (
-            "I can answer questions about activities, including their descriptions and schedules."
-        )
-
-    return {"answer": answer, "source": "rag", "confidence": 0.8}
-
-
-def run_text2sql(question: str) -> dict:
-    """Simulate a Text2SQL query against the activity database."""
-    normalized = question.lower()
-    if any(keyword in normalized for keyword in ("how many", "count", "total", "how full")):
-        total_participants = sum(len(activity["participants"]) for activity in activities.values())
-        answer = f"There are {total_participants} students signed up across all activities."
-    elif any(keyword in normalized for keyword in ("which", "list")):
-        activity_names = ", ".join(activities.keys())
-        answer = f"The activities are: {activity_names}."
-    else:
-        answer = "I found activity information from the database."
-
-    return {"answer": answer, "source": "text2sql", "confidence": 0.8}
 
 
 @app.post("/api/ask")

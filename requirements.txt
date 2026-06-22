@@ -8,6 +8,7 @@ httpcore2==2.4.0
 httpx2==2.4.0
 idna==3.18
 iniconfig==2.3.0
+numpy==2.5.0
 packaging==26.2
 pluggy==1.6.0
 pydantic==2.13.4
