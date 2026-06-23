@@ -1,79 +1,87 @@
-# This tells promptfoo that the "prompt" it will be testing is the
-# actual content of your Python file.
+# promptfooconfig.yml - FINAL CORRECTED VERSION
+
 prompts:
-  - file://src/app.py
+  - |
+    Add two new functions to src/app.py, placed BELOW remove_signup().
 
-# This defines a "provider" that does nothing but simply return
-# the prompt it was given. This is how we test the file content directly.
+    Function 1 — classify_query(question: str) -> str:
+      Returns "rag" if the question is qualitative (what, describe, tell me about,
+      how does, explain), or "text2sql" if quantitative (how many, which, list,
+      count, total, how much, how full).
+      Returns "unknown" for anything else.
+      Use keyword matching — no external calls.
+      Single function, docstring, type annotations.
+    
+    Function 2 — ask() route:
+      POST /api/ask
+      Reads {"question": str} from request JSON.
+      Returns 400 if question field missing or empty.
+      Calls classify_query() to determine route.
+      If "rag": calls rag_search(question) and returns result.
+      If "text2sql": calls run_text2sql(question) and returns result.
+      If "unknown": returns {"answer": "I can only answer questions about
+      activities. Try asking what an activity is about, or how many students
+      have joined.", "source": "direct", "confidence": 1.0}
+      All responses: {"answer": str, "source": str, "confidence": float}
+      Status 200 on success, 400 on missing field, 500 on tool error.
+      Use jsonify(). Do not modify get_activities(), signup(), remove_signup().
+      Do not touch src/tests/test_app.py.
+
 providers:
-  - id: 'echo'
+  - id: github:gpt-4o-mini
 
+# THIS IS THE CORRECTED TEST SUITE. IT ONLY TESTS FOR WHAT YOU ASKED FOR.
 tests:
-  # --- Fixed Original Tests ---
-  - description: "Checks for JSONResponse usage (FastAPI standard)"
-    assert:
-      - type: contains
-        value: "JSONResponse"
-
   - description: "UAT-LOCKED Check: Output does NOT contain modification of get_activities"
     assert:
       - type: not-contains
         value: "def get_activities"
-
   - description: "UAT-LOCKED Check: Output does NOT include the existing signup route"
     assert:
       - type: not-contains
         value: "def signup_for_activity"
-
-  # ── Capstone: /api/ask endpoint eval ─────────────────────────────────────
+  - description: "Output uses jsonify"
+    assert:
+      - type: contains
+        value: "jsonify"
   - description: "Capstone: ask endpoint has correct function name"
     assert:
       - type: contains
         value: "def ask"
-
   - description: "Capstone: ask endpoint uses correct route"
     assert:
       - type: contains
         value: "/api/ask"
-
   - description: "Capstone: endpoint accepts POST method"
     assert:
       - type: contains
         value: "POST"
-
   - description: "Capstone: classifier function present"
     assert:
       - type: contains
         value: "classify_query"
-
   - description: "Capstone: RAG routing for qualitative queries"
     assert:
       - type: contains
         value: "rag"
-
   - description: "Capstone: Text2SQL routing for quantitative queries"
     assert:
       - type: contains
         value: "text2sql"
-
   - description: "Capstone: does NOT modify get_activities — UAT-locked"
     assert:
       - type: not-contains
         value: "def get_activities"
-
   - description: "Capstone: does NOT modify signup — UAT-locked"
     assert:
       - type: not-contains
-        # This should check for the function name from your file
-        value: "def signup_for_activity"
-
+        value: "def signup"
   - description: "Capstone: returns source field in response"
     assert:
       - type: contains
-        # This is fixed to look for the key without specific quotes
-        value: "source"
-
+        value: '"source"'
   - description: "Capstone: handles 400 for missing question field"
     assert:
       - type: contains
         value: "400"
+

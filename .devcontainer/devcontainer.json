@@ -1,7 +1,9 @@
 {
-  "name": "Python 3",
+  "name": "Python 3 & Node.js",
   "image": "mcr.microsoft.com/devcontainers/python:3.13",
-  "forwardPorts": [8000],
+  "forwardPorts": [
+    8000
+  ],
   "postCreateCommand": "pip install -r requirements.txt",
   "customizations": {
     "vscode": {
@@ -11,6 +13,11 @@
         "GitHub.copilot-chat",
         "GitHub.copilot"
       ]
+    },
+    "features": {
+      "ghcr.io/devcontainers/features/node:1": {
+        "version": "22"
+      }
     }
   }
 }

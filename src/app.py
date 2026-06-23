@@ -1,4 +1,4 @@
-# CANARY_TEST_123_XYZ
+# CANARY_TEST_ABC_789
 """
 High School Management System API
 
@@ -6,7 +6,7 @@ A super simple FastAPI application that allows students to view and sign up
 for extracurricular activities at Mergington High School.
 """
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, RedirectResponse
 import os
@@ -79,6 +79,26 @@ def signup_for_activity(activity_name: str, email: str):
     activity["participants"].append(email)
     return {"message": f"Signed up {email} for {activity_name}"}
 
+@app.get("/api/activities/{activity_id}")
+async def get_activity(activity_id: int):
+    """
+    Retrieves the details for a specific activity by its ID.
+    """
+    # This is a placeholder for your actual data lookup logic
+    # (e.g., querying a database).
+    activities_db = {
+        1: {"id": 1, "name": "Morning Yoga Session", "instructor": "Lena"},
+        2: {"id": 2, "name": "Introduction to Pottery", "instructor": "Sam"},
+    }
+
+    activity = activities_db.get(activity_id)
+
+    if not activity:
+        # If the activity is not found, raise an HTTPException for the 404 case.
+        raise HTTPException(status_code=404, detail="Activity not found")
+
+    # If found, return the activity details. FastAPI handles the JSON conversion.
+    return activity
 
 def jsonify(content: dict, status_code: int = 200):
     """Return a JSON response with the given content and status."""
@@ -103,6 +123,8 @@ def classify_query(question: str) -> str:
 
 
 
+
+app = FastAPI()
 
 @app.post("/api/ask")
 async def ask(request: Request):
@@ -135,5 +157,6 @@ async def ask(request: Request):
         return jsonify(result)
     except Exception:
         return jsonify({"error": "tool error"}, status_code=500)
+
 
 
