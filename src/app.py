@@ -1,8 +1,11 @@
 # src/app.py - COMPLETE AND CORRECT VERSION
 
 from fastapi import FastAPI, Request, HTTPException
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, JSONResponse # Add JSONResponse here
 from typing import Dict, List, Any
+
+
 
 # ==============================================================================
 # 1. BOILERPLATE DATA - This must be present for the tests to work.
@@ -32,6 +35,7 @@ activities: Dict[str, Dict[str, Any]] = {
 # 2. FASTAPI APP INSTANCE - The main application object.
 # ==============================================================================
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="src/static"), name="static")
 
 # ==============================================================================
 # 3. ORIGINAL BOILERPLATE ROUTES - These are the routes that are currently missing.
