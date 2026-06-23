@@ -1,27 +1,42 @@
-# promptfooconfig.yml
+# promptfooconfig.yml - FINAL CORRECTED VERSION
+
 prompts:
   - |
+    Add two new functions to src/app.py, placed BELOW remove_signup().
 
-    Add a new FastAPI route function called get_activity to src/app.py.
-    Return the activity details as a JSON object (200) or raise HTTPException(status_code=404, detail="Activity not found").
-    Place the new route below signup_for_activity(). Use existing imports only; do not add new imports. Output only the new route + function.
+    Function 1 — classify_query(question: str) -> str:
+      Returns "rag" if the question is qualitative (what, describe, tell me about,
+      how does, explain), or "text2sql" if quantitative (how many, which, list,
+      count, total, how much, how full).
+      Returns "unknown" for anything else.
+      Use keyword matching — no external calls.
+      Single function, docstring, type annotations.
+    
+    Function 2 — ask() route:
+      POST /api/ask
+      Reads {"question": str} from request JSON.
+      Returns 400 if question field missing or empty.
+      Calls classify_query() to determine route.
+      If "rag": calls rag_search(question) and returns result.
+      If "text2sql": calls run_text2sql(question) and returns result.
+      If "unknown": returns {"answer": "I can only answer questions about
+      activities. Try asking what an activity is about, or how many students
+      have joined.", "source": "direct", "confidence": 1.0}
+      All responses: {"answer": str, "source": str, "confidence": float}
+      Status 200 on success, 400 on missing field, 500 on tool error.
+      Use jsonify(). Do not modify get_activities(), signup(), remove_signup().
+      Do not touch src/tests/test_app.py.
 
 providers:
   - id: github:gpt-4o-mini
 
+# THIS IS THE CORRECTED TEST SUITE. IT ONLY TESTS FOR WHAT YOU ASKED FOR.
 tests:
-
-  - description: "Output contains the correct function name"
-    assert:
-      - type: contains
-        value: "def get_activity"
-
-  - description: "Output does NOT contain modification of get_activities"
+  - description: "UAT-LOCKED Check: Output does NOT contain modification of get_activities"
     assert:
       - type: not-contains
         value: "def get_activities"
-
-  - description: "Output does NOT include the existing signup route"
+  - description: "UAT-LOCKED Check: Output does NOT include the existing signup route"
     assert:
       - type: not-contains
         value: "def signup_for_activity"
@@ -29,8 +44,44 @@ tests:
     assert:
       - type: contains
         value: "jsonify"
-
-  - description: "Output uses 404 status for not found"
+  - description: "Capstone: ask endpoint has correct function name"
     assert:
       - type: contains
-        value: "status_code=404"
+        value: "def ask"
+  - description: "Capstone: ask endpoint uses correct route"
+    assert:
+      - type: contains
+        value: "/api/ask"
+  - description: "Capstone: endpoint accepts POST method"
+    assert:
+      - type: contains
+        value: "POST"
+  - description: "Capstone: classifier function present"
+    assert:
+      - type: contains
+        value: "classify_query"
+  - description: "Capstone: RAG routing for qualitative queries"
+    assert:
+      - type: contains
+        value: "rag"
+  - description: "Capstone: Text2SQL routing for quantitative queries"
+    assert:
+      - type: contains
+        value: "text2sql"
+  - description: "Capstone: does NOT modify get_activities — UAT-locked"
+    assert:
+      - type: not-contains
+        value: "def get_activities"
+  - description: "Capstone: does NOT modify signup — UAT-locked"
+    assert:
+      - type: not-contains
+        value: "def signup"
+  - description: "Capstone: returns source field in response"
+    assert:
+      - type: contains
+        value: '"source"'
+  - description: "Capstone: handles 400 for missing question field"
+    assert:
+      - type: contains
+        value: "400"
+
